@@ -21,7 +21,7 @@
 | 🌙 | **月亮星座** | ELP-2000/82（120 项） + 章动修正 |
 | 🪐 | **行星星座** | 水金火木土五大行星，含光行时修正 |
 | 📊 | **批量本命盘** | 一次计算 ASC + 全部天体位置 |
-| 🌐 | **城市数据库** | 33,000+ 全球城市坐标与时区（可选模块） |
+| 🌐 | **城市数据库** | 33,000+ 全球城市坐标与时区（精简英文版，可选模块） |
 | 🧵 | **线程安全** | 全面遵循 `Sendable` |
 | 🚫 | **零依赖** | 纯 Swift，无第三方库 |
 | ✅ | **精度验证** | 经 JPL Horizons 天文台数据验证 |
@@ -47,7 +47,7 @@ dependencies: [
     name: "YourTarget",
     dependencies: [
         "AstroCore",              // ~1.7 MB — 核心天文计算
-        "AstroCoreLocations",     // ~8 MB — 可选：33,000+ 城市坐标数据库
+        "AstroCoreLocations",     // 在 AstroCore 基础上额外约 +2 MB（合计约 ~3.7 MB）
     ]
 ),
 ```
@@ -169,9 +169,6 @@ for city in results {
     print("  \(city.timeZoneIdentifier)")       // "Asia/Tokyo"
 }
 
-// 热门城市
-let popular = cities.popularCities(limit: 10)
-
 // 直接获取 GeoCoordinate 用于计算
 let tokyo = results.first!
 let asc = try AstroCalculator.ascendant(for: moment, coordinate: tokyo.coordinate)
@@ -248,8 +245,8 @@ print(sign.contains(longitude: 135.0))  // true
 
 | 类型 | 说明 |
 |------|------|
-| `CityIndex` | 单例城市搜索引擎（search / popularCities / city(forID:)） |
-| `CityRecord` | 城市记录（名称、坐标、时区、人口、本地化名称） |
+| `CityIndex` | 单例城市搜索引擎（search / city(forID:)） |
+| `CityRecord` | 城市记录（名称、国家代码、坐标、时区） |
 
 ---
 

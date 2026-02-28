@@ -21,7 +21,7 @@
 | 🌙 | **Moon Sign** | ELP-2000/82 (120 terms) + nutation correction |
 | 🪐 | **Planet Signs** | Mercury, Venus, Mars, Jupiter, Saturn with light-time correction |
 | 📊 | **Batch Natal Chart** | Compute ASC + all body positions in one call |
-| 🌐 | **City Database** | 33,000+ global cities with coordinates & timezones (optional) |
+| 🌐 | **City Database** | 33,000+ global cities with coordinates & timezones (compact English dataset, optional) |
 | 🧵 | **Thread-safe** | Full `Sendable` conformance |
 | 🚫 | **Zero Dependencies** | Pure Swift, no third-party libraries |
 | ✅ | **Verified Accuracy** | Validated against JPL Horizons ephemeris |
@@ -47,7 +47,7 @@ Then add as a target dependency:
     name: "YourTarget",
     dependencies: [
         "AstroCore",              // ~1.7 MB — core astronomical computation
-        "AstroCoreLocations",     // ~8 MB — optional: 33,000+ city coordinate database
+        "AstroCoreLocations",     // adds about +2 MB on top of AstroCore (~3.7 MB total)
     ]
 ),
 ```
@@ -169,9 +169,6 @@ for city in results {
     print("  \(city.timeZoneIdentifier)")       // "Asia/Tokyo"
 }
 
-// Popular cities by population
-let popular = cities.popularCities(limit: 10)
-
 // Use GeoCoordinate directly for calculations
 let tokyo = results.first!
 let asc = try AstroCalculator.ascendant(for: moment, coordinate: tokyo.coordinate)
@@ -248,8 +245,8 @@ Validation sources:
 
 | Type | Description |
 |------|-------------|
-| `CityIndex` | Singleton city search engine (search / popularCities / city(forID:)) |
-| `CityRecord` | City record (name, coordinate, timezone, population, localized name) |
+| `CityIndex` | Singleton city search engine (search / city(forID:)) |
+| `CityRecord` | City record (name, country code, coordinate, timezone) |
 
 ---
 
