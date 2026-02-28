@@ -67,6 +67,8 @@ Or in Xcode: **File → Add Package Dependencies…** → paste the URL above.
 
 ## 🚀 Usage
 
+`AstroCore` only requires coordinates (`GeoCoordinate`) and a timezone (`timeZoneIdentifier`) — no city data needed.
+
 ```swift
 import AstroCore
 ```

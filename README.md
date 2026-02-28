@@ -67,6 +67,8 @@ dependencies: [
 
 ## 🚀 使用
 
+`AstroCore` 只需要坐标 (`GeoCoordinate`) 和时区 (`timeZoneIdentifier`) 即可完成所有天文计算，不依赖任何城市数据。
+
 ```swift
 import AstroCore
 ```
