@@ -5,7 +5,7 @@ import Foundation
 enum ELP2000 {
     /// Compute geocentric ecliptic position of the Moon.
     /// t: Julian centuries from J2000.0 in TT
-    static func compute(julianCenturiesTT t: Double) -> CelestialPosition {
+    static func compute(julianCenturiesTT t: Double) -> RawCelestialPosition {
         // Mean longitude of the Moon (L′)
         let lp = AngleMath.normalized(degrees:
             218.3164477 + 481267.88123421 * t - 0.0015786 * t * t
@@ -87,15 +87,11 @@ enum ELP2000 {
 
         let lonDeg = AngleMath.normalized(degrees: lp + sumL / 1_000_000.0)
         let latDeg = sumB / 1_000_000.0
-        let zodiac = ZodiacMapper.details(forNormalizedLongitude: lonDeg)
 
-        return CelestialPosition(
+        return RawCelestialPosition(
             body: .moon,
             longitude: lonDeg,
-            latitude: latDeg,
-            sign: zodiac.sign,
-            degreeInSign: zodiac.degreeInSign,
-            isBoundaryCase: zodiac.isBoundaryCase
+            latitude: latDeg
         )
     }
 

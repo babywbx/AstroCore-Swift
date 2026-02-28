@@ -28,8 +28,7 @@ enum JulianDay {
 
     /// Compute JD_UT from CivilMoment (converts to UTC first).
     static func julianDay(for moment: CivilMoment) throws(AstroError) -> Double {
-        let utc = try moment.utcFractionalComponents()
-        return julianDay(year: utc.year, month: utc.month, dayFraction: utc.dayFraction)
+        moment.julianDayUT
     }
 
     /// Julian centuries from J2000.0 (T_UT)

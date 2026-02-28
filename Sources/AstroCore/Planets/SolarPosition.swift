@@ -5,14 +5,14 @@ import Foundation
 // Plus FK5 correction and aberration
 enum SolarPosition {
     /// Compute geocentric ecliptic position of the Sun.
-    static func compute(tau: Double, t: Double) -> CelestialPosition {
+    static func compute(tau: Double, t: Double) -> RawCelestialPosition {
         compute(tau: tau, t: t, earth: VSOP87D.earthPosition(tau: tau))
     }
 
     /// Compute with pre-computed Earth position (avoids redundant Earth evaluation).
     static func compute(
         tau: Double, t: Double, earth: VSOP87D.SphericalPosition
-    ) -> CelestialPosition {
+    ) -> RawCelestialPosition {
 
         // Geocentric longitude = Earth's helio longitude + 180°
         var sunLon = earth.longitude + .pi
@@ -32,15 +32,11 @@ enum SolarPosition {
         // Convert to degrees and normalize
         let lonDeg = AngleMath.normalized(degrees: AngleMath.toDegrees(sunLon))
         let latDeg = AngleMath.toDegrees(corrLat)
-        let zodiac = ZodiacMapper.details(forNormalizedLongitude: lonDeg)
 
-        return CelestialPosition(
+        return RawCelestialPosition(
             body: .sun,
             longitude: lonDeg,
-            latitude: latDeg,
-            sign: zodiac.sign,
-            degreeInSign: zodiac.degreeInSign,
-            isBoundaryCase: zodiac.isBoundaryCase
+            latitude: latDeg
         )
     }
 }

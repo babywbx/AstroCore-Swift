@@ -11,9 +11,8 @@ public enum AstroCalculator {
     public static func localSiderealTimeDegrees(
         for moment: CivilMoment, longitude: Double
     ) throws -> Double {
-        let jd = try JulianDay.julianDay(for: moment)
-        let dt = DeltaT.deltaT(decimalYear: moment.decimalYear)
-        let tTT = JulianDay.julianCenturiesTT(jdUT: jd, deltaT: dt)
+        let jd = moment.julianDayUT
+        let tTT = moment.julianCenturiesTT
         let nut = Nutation.compute(julianCenturiesTT: tTT)
         let meanObl = Obliquity.meanObliquity(julianCenturiesTT: tTT)
         let trueObl = meanObl + nut.obliquity / 3600.0
@@ -81,10 +80,10 @@ public enum AstroCalculator {
         }
 
         // Compute shared values once
-        let jdUT = try JulianDay.julianDay(for: moment)
-        let dt = DeltaT.deltaT(decimalYear: moment.decimalYear)
-        let tau = JulianDay.julianMillenniaTT(jdUT: jdUT, deltaT: dt)
-        let t = JulianDay.julianCenturiesTT(jdUT: jdUT, deltaT: dt)
+        let jdUT = moment.julianDayUT
+        let dt = moment.deltaT
+        let tau = moment.julianMillenniaTT
+        let t = moment.julianCenturiesTT
         let nut = Nutation.compute(julianCenturiesTT: t)
 
         // Compute Earth position once (shared by Sun + all planets)
@@ -123,7 +122,7 @@ public enum AstroCalculator {
         var positions: [CelestialBody: CelestialPosition] = [:]
         positions.reserveCapacity(bodies.count)
         for body in bodies {
-            let raw: CelestialPosition
+            let raw: RawCelestialPosition
             switch body {
             case .sun:
                 raw = SolarPosition.compute(tau: tau, t: t, earth: earth!)
@@ -147,16 +146,12 @@ public enum AstroCalculator {
     private static func timeParameters(
         for moment: CivilMoment
     ) throws -> (tau: Double, t: Double) {
-        let jdUT = try JulianDay.julianDay(for: moment)
-        let dt = DeltaT.deltaT(decimalYear: moment.decimalYear)
-        let tau = JulianDay.julianMillenniaTT(jdUT: jdUT, deltaT: dt)
-        let t = JulianDay.julianCenturiesTT(jdUT: jdUT, deltaT: dt)
-        return (tau, t)
+        (moment.julianMillenniaTT, moment.julianCenturiesTT)
     }
 
     /// Apply nutation correction to convert from mean to apparent longitude.
     private static func applyingNutation(
-        to position: CelestialPosition,
+        to position: RawCelestialPosition,
         nutationArcsec: Double
     ) -> CelestialPosition {
         let longitude = AngleMath.normalized(

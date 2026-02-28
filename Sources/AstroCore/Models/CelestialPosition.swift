@@ -10,3 +10,11 @@ public struct CelestialPosition: Sendable, Hashable, Codable {
     /// True if within 0.5° of a sign boundary
     public let isBoundaryCase: Bool
 }
+
+struct RawCelestialPosition: Sendable {
+    let body: CelestialBody
+    /// Geocentric ecliptic longitude [0, 360)
+    let longitude: Double
+    /// Geocentric ecliptic latitude [-90, 90]
+    let latitude: Double
+}

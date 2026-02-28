@@ -9,9 +9,8 @@ enum AscendantEngine {
     ) throws(AstroError) -> AscendantResult {
         try coordinate.validateForAscendant()
 
-        let jdUT = try JulianDay.julianDay(for: moment)
-        let dt = DeltaT.deltaT(decimalYear: moment.decimalYear)
-        let tTT = JulianDay.julianCenturiesTT(jdUT: jdUT, deltaT: dt)
+        let jdUT = moment.julianDayUT
+        let tTT = moment.julianCenturiesTT
 
         // Nutation and obliquity
         let nut = Nutation.compute(julianCenturiesTT: tTT)

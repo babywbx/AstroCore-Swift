@@ -52,8 +52,9 @@ enum Nutation {
                 + Double(term.mp) * mp + Double(term.f) * f
                 + Double(term.omega) * omega
 
-            let sinArg = TrigDeg.sin(arg)
-            let cosArg = TrigDeg.cos(arg)
+            let argRad = AngleMath.toRadians(arg)
+            let sinArg = Foundation.sin(argRad)
+            let cosArg = Foundation.cos(argRad)
 
             // s/c in 0.0001″; sp/cp stored as tenths of 0.0001″/cy
             deltaPsi += (Double(term.s) + 0.1 * Double(term.sp) * t) * sinArg
