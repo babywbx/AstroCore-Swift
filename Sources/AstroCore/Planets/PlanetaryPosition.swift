@@ -13,11 +13,18 @@ enum PlanetaryPosition {
     static func compute(
         _ body: CelestialBody, tau: Double, earth: VSOP87D.SphericalPosition
     ) -> RawCelestialPosition {
-        let earthRect = rectangular(from: earth)
+        compute(body, tau: tau, earthRect: rectangular(from: earth))
+    }
+
+    /// Compute with pre-computed Earth rectangular coordinates (batch fast path).
+    static func compute(
+        _ body: CelestialBody, tau: Double, earthRect: Rect
+    ) -> RawCelestialPosition {
+        let series = VSOP87D.planetSeries(body)
 
         // Iterate light-time correction (2 iterations sufficient)
         var planetTau = tau
-        var planet = VSOP87D.planetPosition(body, tau: planetTau)
+        var planet = VSOP87D.planetPosition(series, tau: planetTau)
 
         for _ in 0..<2 {
             let planetRect = rectangular(from: planet)
@@ -28,7 +35,7 @@ enum PlanetaryPosition {
             // Light-time in Julian millennia: 0.0057755183 days/AU → millennia
             let lightTimeMill = 0.0057755183 * distance / 365250.0
             planetTau = tau - lightTimeMill
-            planet = VSOP87D.planetPosition(body, tau: planetTau)
+            planet = VSOP87D.planetPosition(series, tau: planetTau)
         }
 
         // Final geocentric rectangular
@@ -52,14 +59,16 @@ enum PlanetaryPosition {
         )
     }
 
-    private static func rectangular(
+    @inline(__always)
+    static func rectangular(
         from position: VSOP87D.SphericalPosition
     ) -> Rect {
-        let cosLat = Foundation.cos(position.latitude)
+        let latTrig = AngleMath.sincos(position.latitude)
+        let lonTrig = AngleMath.sincos(position.longitude)
         return (
-            x: position.radius * cosLat * Foundation.cos(position.longitude),
-            y: position.radius * cosLat * Foundation.sin(position.longitude),
-            z: position.radius * Foundation.sin(position.latitude)
+            x: position.radius * latTrig.cos * lonTrig.cos,
+            y: position.radius * latTrig.cos * lonTrig.sin,
+            z: position.radius * latTrig.sin
         )
     }
 }

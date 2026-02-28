@@ -28,6 +28,7 @@ enum ZodiacMapper {
     }
 
     /// Compute all zodiac-derived metadata from a normalized longitude [0, 360).
+    @inline(__always)
     static func details(forNormalizedLongitude longitude: Double) -> Details {
         precondition(longitude.isFinite, "ZodiacMapper received non-finite longitude")
         let index = Int(longitude / 30.0) % 12

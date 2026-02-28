@@ -16,16 +16,15 @@ enum VSOP87D {
     /// terms: array of series [X0, X1, X2, ...] where Xi = [(A, B, C), ...]
     /// tau: Julian millennia from J2000.0 in TT
     /// Returns: the coordinate value (radians for L/B, AU for R)
+    @inline(__always)
     static func evaluate(series: [[(Double, Double, Double)]], tau: Double) -> Double {
         var result = 0.0
-        var tauPower = 1.0
-        for s in series {
+        for s in series.reversed() {
             var sum = 0.0
             for term in s {
                 sum += term.0 * Foundation.cos(term.1 + term.2 * tau)
             }
-            result += sum * tauPower
-            tauPower *= tau
+            result = result * tau + sum
         }
         return result
     }
@@ -65,6 +64,7 @@ enum VSOP87D {
     )
 
     /// Compute heliocentric position for Earth.
+    @inline(__always)
     static func earthPosition(tau: Double) -> SphericalPosition {
         let l = evaluate(series: earthLongitudeSeries, tau: tau)
         let b = evaluate(series: earthLatitudeSeries, tau: tau)
@@ -91,11 +91,17 @@ enum VSOP87D {
     }
 
     /// Compute heliocentric position for any supported planet.
-    static func planetPosition(_ body: CelestialBody, tau: Double) -> SphericalPosition {
-        let s = planetSeries(body)
-        let l = evaluate(series: s.l, tau: tau)
-        let b = evaluate(series: s.b, tau: tau)
-        let r = evaluate(series: s.r, tau: tau)
+    @inline(__always)
+    static func planetPosition(_ series: SeriesBundle, tau: Double) -> SphericalPosition {
+        let l = evaluate(series: series.l, tau: tau)
+        let b = evaluate(series: series.b, tau: tau)
+        let r = evaluate(series: series.r, tau: tau)
         return SphericalPosition(longitude: l, latitude: b, radius: r)
+    }
+
+    /// Compute heliocentric position for any supported planet.
+    @inline(__always)
+    static func planetPosition(_ body: CelestialBody, tau: Double) -> SphericalPosition {
+        planetPosition(planetSeries(body), tau: tau)
     }
 }

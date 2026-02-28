@@ -20,6 +20,9 @@ public struct CivilMoment: Sendable, Hashable, Codable {
     private let cachedDeltaT: Double
     private let cachedJulianCenturiesTT: Double
     private let cachedJulianMillenniaTT: Double
+    private let cachedNutationLongitude: Double
+    private let cachedTrueObliquity: Double
+    private let cachedGreenwichApparentSiderealTime: Double
 
     private static let utcTimeZone = TimeZone(identifier: "UTC")!
 
@@ -80,6 +83,16 @@ public struct CivilMoment: Sendable, Hashable, Codable {
             jdUT: julianDayUT,
             deltaT: deltaT
         )
+        let nutation = Nutation.compute(julianCenturiesTT: julianCenturiesTT)
+        let meanObliquity = Obliquity.meanObliquity(
+            julianCenturiesTT: julianCenturiesTT
+        )
+        let trueObliquity = meanObliquity + nutation.obliquity / 3600.0
+        let greenwichApparentSiderealTime = SiderealTime.gast(
+            jdUT: julianDayUT,
+            nutationLongitude: nutation.longitude,
+            trueObliquity: trueObliquity
+        )
 
         self.year = year
         self.month = month
@@ -99,6 +112,9 @@ public struct CivilMoment: Sendable, Hashable, Codable {
         self.cachedDeltaT = deltaT
         self.cachedJulianCenturiesTT = julianCenturiesTT
         self.cachedJulianMillenniaTT = julianMillenniaTT
+        self.cachedNutationLongitude = nutation.longitude
+        self.cachedTrueObliquity = trueObliquity
+        self.cachedGreenwichApparentSiderealTime = greenwichApparentSiderealTime
     }
 
     /// Decimal year for ΔT lookup, e.g. 2000.5 ≈ July 2000.
@@ -111,6 +127,14 @@ public struct CivilMoment: Sendable, Hashable, Codable {
     var deltaT: Double { cachedDeltaT }
     var julianCenturiesTT: Double { cachedJulianCenturiesTT }
     var julianMillenniaTT: Double { cachedJulianMillenniaTT }
+    var nutationLongitude: Double { cachedNutationLongitude }
+    var trueObliquity: Double { cachedTrueObliquity }
+    var greenwichApparentSiderealTime: Double { cachedGreenwichApparentSiderealTime }
+
+    @inline(__always)
+    func localApparentSiderealTime(longitude: Double) -> Double {
+        AngleMath.normalized(degrees: cachedGreenwichApparentSiderealTime + longitude)
+    }
 
     /// Convert to UTC date components using explicit Gregorian calendar.
     func toUTCComponents() throws(AstroError) -> DateComponents {

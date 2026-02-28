@@ -52,13 +52,11 @@ enum Nutation {
                 + Double(term.mp) * mp + Double(term.f) * f
                 + Double(term.omega) * omega
 
-            let argRad = AngleMath.toRadians(arg)
-            let sinArg = Foundation.sin(argRad)
-            let cosArg = Foundation.cos(argRad)
+            let trig = AngleMath.sincos(AngleMath.toRadians(arg))
 
             // s/c in 0.0001″; sp/cp stored as tenths of 0.0001″/cy
-            deltaPsi += (Double(term.s) + 0.1 * Double(term.sp) * t) * sinArg
-            deltaEps += (Double(term.c) + 0.1 * Double(term.cp) * t) * cosArg
+            deltaPsi += (Double(term.s) + 0.1 * Double(term.sp) * t) * trig.sin
+            deltaEps += (Double(term.c) + 0.1 * Double(term.cp) * t) * trig.cos
         }
 
         // Convert from 0.0001″ to arcseconds

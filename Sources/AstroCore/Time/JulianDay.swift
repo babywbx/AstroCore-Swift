@@ -27,7 +27,7 @@ enum JulianDay {
     }
 
     /// Compute JD_UT from CivilMoment (converts to UTC first).
-    static func julianDay(for moment: CivilMoment) throws(AstroError) -> Double {
+    static func julianDay(for moment: CivilMoment) -> Double {
         moment.julianDayUT
     }
 

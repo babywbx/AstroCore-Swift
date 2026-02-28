@@ -46,7 +46,7 @@ struct JulianDayTests {
             hour: 12, minute: 0, second: 0,
             timeZoneIdentifier: "UTC"
         )
-        let jd = try JulianDay.julianDay(for: moment)
+        let jd = JulianDay.julianDay(for: moment)
         #expect(abs(jd - 2451545.0) < 0.000001)
     }
 }

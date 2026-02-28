@@ -4,22 +4,14 @@ import Foundation
 public enum AstroCalculator {
     // --- Low-level (stable API) ---
     public static func julianDayUT(for moment: CivilMoment) throws -> Double {
-        try JulianDay.julianDay(for: moment)
+        moment.julianDayUT
     }
 
     /// Returns Local Apparent Sidereal Time in degrees.
     public static func localSiderealTimeDegrees(
         for moment: CivilMoment, longitude: Double
     ) throws -> Double {
-        let jd = moment.julianDayUT
-        let tTT = moment.julianCenturiesTT
-        let nut = Nutation.compute(julianCenturiesTT: tTT)
-        let meanObl = Obliquity.meanObliquity(julianCenturiesTT: tTT)
-        let trueObl = meanObl + nut.obliquity / 3600.0
-        return SiderealTime.last(
-            jdUT: jd, longitude: longitude,
-            nutationLongitude: nut.longitude, trueObliquity: trueObl
-        )
+        moment.localApparentSiderealTime(longitude: longitude)
     }
 
     // --- Ascendant (requires coordinate) ---
@@ -33,22 +25,20 @@ public enum AstroCalculator {
     public static func sunPosition(
         for moment: CivilMoment
     ) throws -> CelestialPosition {
-        let (tau, t) = try timeParameters(for: moment)
-        let nut = Nutation.compute(julianCenturiesTT: t)
+        let (tau, t) = timeParameters(for: moment)
         return applyingNutation(
             to: SolarPosition.compute(tau: tau, t: t),
-            nutationArcsec: nut.longitude
+            nutationArcsec: moment.nutationLongitude
         )
     }
 
     public static func moonPosition(
         for moment: CivilMoment
     ) throws -> CelestialPosition {
-        let (_, t) = try timeParameters(for: moment)
-        let nut = Nutation.compute(julianCenturiesTT: t)
+        let (_, t) = timeParameters(for: moment)
         return applyingNutation(
             to: ELP2000.compute(julianCenturiesTT: t),
-            nutationArcsec: nut.longitude
+            nutationArcsec: moment.nutationLongitude
         )
     }
 
@@ -59,11 +49,10 @@ public enum AstroCalculator {
         case .sun: return try sunPosition(for: moment)
         case .moon: return try moonPosition(for: moment)
         default:
-            let (tau, t) = try timeParameters(for: moment)
-            let nut = Nutation.compute(julianCenturiesTT: t)
+            let (tau, _) = timeParameters(for: moment)
             return applyingNutation(
                 to: PlanetaryPosition.compute(body, tau: tau),
-                nutationArcsec: nut.longitude
+                nutationArcsec: moment.nutationLongitude
             )
         }
     }
@@ -84,23 +73,20 @@ public enum AstroCalculator {
         let dt = moment.deltaT
         let tau = moment.julianMillenniaTT
         let t = moment.julianCenturiesTT
-        let nut = Nutation.compute(julianCenturiesTT: t)
+        let nutationLongitude = moment.nutationLongitude
 
         // Compute Earth position once (shared by Sun + all planets)
         let needsEarth = bodies.contains(.sun)
             || bodies.contains(where: { $0 != .sun && $0 != .moon })
         let earth = needsEarth ? VSOP87D.earthPosition(tau: tau) : nil
+        let earthRect = earth.map { PlanetaryPosition.rectangular(from: $0) }
 
         // Ascendant (reuse nutation)
         var ascResult: AscendantResult?
         if includeAscendant, let coord = coordinate {
             try coord.validateForAscendant()
-            let meanObl = Obliquity.meanObliquity(julianCenturiesTT: t)
-            let trueObl = meanObl + nut.obliquity / 3600.0
-            let lastDeg = SiderealTime.last(
-                jdUT: jdUT, longitude: coord.longitude,
-                nutationLongitude: nut.longitude, trueObliquity: trueObl
-            )
+            let trueObl = moment.trueObliquity
+            let lastDeg = moment.localApparentSiderealTime(longitude: coord.longitude)
             let ascLon = AscendantEngine.ascendantLongitude(
                 lastDegrees: lastDeg,
                 trueObliquityDegrees: trueObl,
@@ -129,9 +115,9 @@ public enum AstroCalculator {
             case .moon:
                 raw = ELP2000.compute(julianCenturiesTT: t)
             default:
-                raw = PlanetaryPosition.compute(body, tau: tau, earth: earth!)
+                raw = PlanetaryPosition.compute(body, tau: tau, earthRect: earthRect!)
             }
-            positions[body] = applyingNutation(to: raw, nutationArcsec: nut.longitude)
+            positions[body] = applyingNutation(to: raw, nutationArcsec: nutationLongitude)
         }
 
         return NatalPositions(
@@ -145,11 +131,12 @@ public enum AstroCalculator {
     // --- Internal ---
     private static func timeParameters(
         for moment: CivilMoment
-    ) throws -> (tau: Double, t: Double) {
+    ) -> (tau: Double, t: Double) {
         (moment.julianMillenniaTT, moment.julianCenturiesTT)
     }
 
     /// Apply nutation correction to convert from mean to apparent longitude.
+    @inline(__always)
     private static func applyingNutation(
         to position: RawCelestialPosition,
         nutationArcsec: Double

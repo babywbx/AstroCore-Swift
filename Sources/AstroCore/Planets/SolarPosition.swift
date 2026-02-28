@@ -21,7 +21,8 @@ enum SolarPosition {
         // FK5 correction (Meeus p.166)
         let lp = AngleMath.toDegrees(sunLon) - 1.397 * t - 0.00031 * t * t
         let fk5Lon = -0.09033 / 3600.0 // degrees
-        let fk5Lat = (0.03916 * (TrigDeg.cos(lp) - TrigDeg.sin(lp))) / 3600.0
+        let lpTrig = TrigDeg.sincos(lp)
+        let fk5Lat = (0.03916 * (lpTrig.cos - lpTrig.sin)) / 3600.0
         sunLon += AngleMath.toRadians(fk5Lon)
         let corrLat = sunLat + AngleMath.toRadians(fk5Lat)
 

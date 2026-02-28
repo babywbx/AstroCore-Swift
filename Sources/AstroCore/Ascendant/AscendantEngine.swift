@@ -10,18 +10,10 @@ enum AscendantEngine {
         try coordinate.validateForAscendant()
 
         let jdUT = moment.julianDayUT
-        let tTT = moment.julianCenturiesTT
-
-        // Nutation and obliquity
-        let nut = Nutation.compute(julianCenturiesTT: tTT)
-        let meanObl = Obliquity.meanObliquity(julianCenturiesTT: tTT)
-        let trueObl = meanObl + nut.obliquity / 3600.0
+        let trueObl = moment.trueObliquity
 
         // Local Apparent Sidereal Time
-        let lastDeg = SiderealTime.last(
-            jdUT: jdUT, longitude: coordinate.longitude,
-            nutationLongitude: nut.longitude, trueObliquity: trueObl
-        )
+        let lastDeg = moment.localApparentSiderealTime(longitude: coordinate.longitude)
 
         // Ascendant longitude
         let ascLon = ascendantLongitude(
@@ -52,10 +44,12 @@ enum AscendantEngine {
         let lastRad = AngleMath.toRadians(lastDegrees)
         let oblRad = AngleMath.toRadians(trueObliquityDegrees)
         let latRad = AngleMath.toRadians(latitudeDegrees)
+        let lastTrig = AngleMath.sincos(lastRad)
+        let oblTrig = AngleMath.sincos(oblRad)
 
-        let y = -Foundation.cos(lastRad)
-        let x = Foundation.sin(oblRad) * Foundation.tan(latRad)
-            + Foundation.cos(oblRad) * Foundation.sin(lastRad)
+        let y = -lastTrig.cos
+        let x = oblTrig.sin * Foundation.tan(latRad)
+            + oblTrig.cos * lastTrig.sin
 
         let ascRad = Foundation.atan2(y, x)
         // Add 180° to select the eastern (ascending) intersection

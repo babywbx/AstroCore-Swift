@@ -25,4 +25,8 @@ enum TrigDeg {
     static func atan2(_ y: Double, _ x: Double) -> Double {
         AngleMath.toDegrees(Foundation.atan2(y, x))
     }
+
+    static func sincos(_ degrees: Double) -> (sin: Double, cos: Double) {
+        AngleMath.sincos(AngleMath.toRadians(degrees))
+    }
 }
