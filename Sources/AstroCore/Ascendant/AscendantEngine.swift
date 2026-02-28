@@ -48,7 +48,7 @@ enum AscendantEngine {
 
     /// Core ascendant formula using atan2.
     /// Returns ecliptic longitude in [0, 360).
-    private static func ascendantLongitude(
+    static func ascendantLongitude(
         lastDegrees: Double,
         trueObliquityDegrees: Double,
         latitudeDegrees: Double

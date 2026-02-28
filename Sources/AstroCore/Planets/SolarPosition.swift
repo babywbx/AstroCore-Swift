@@ -5,10 +5,14 @@ import Foundation
 // Plus FK5 correction and aberration
 enum SolarPosition {
     /// Compute geocentric ecliptic position of the Sun.
-    /// tau: Julian millennia from J2000.0 in TT
-    /// t: Julian centuries from J2000.0 in TT
     static func compute(tau: Double, t: Double) -> CelestialPosition {
-        let earth = VSOP87D.earthPosition(tau: tau)
+        compute(tau: tau, t: t, earth: VSOP87D.earthPosition(tau: tau))
+    }
+
+    /// Compute with pre-computed Earth position (avoids redundant Earth evaluation).
+    static func compute(
+        tau: Double, t: Double, earth: VSOP87D.SphericalPosition
+    ) -> CelestialPosition {
 
         // Geocentric longitude = Earth's helio longitude + 180°
         var sunLon = earth.longitude + .pi

@@ -76,21 +76,61 @@ public enum AstroCalculator {
         bodies: Set<CelestialBody> = [],
         includeAscendant: Bool = false
     ) throws -> NatalPositions {
-        let jdUT = try JulianDay.julianDay(for: moment)
-        let dt = DeltaT.deltaT(decimalYear: moment.decimalYear)
-
         if includeAscendant && coordinate == nil {
             throw AstroError.missingCoordinateForAscendant
         }
 
+        // Compute shared values once
+        let jdUT = try JulianDay.julianDay(for: moment)
+        let dt = DeltaT.deltaT(decimalYear: moment.decimalYear)
+        let tau = JulianDay.julianMillenniaTT(jdUT: jdUT, deltaT: dt)
+        let t = JulianDay.julianCenturiesTT(jdUT: jdUT, deltaT: dt)
+        let nut = Nutation.compute(julianCenturiesTT: t)
+
+        // Compute Earth position once (shared by Sun + all planets)
+        let needsEarth = bodies.contains(.sun)
+            || bodies.contains(where: { $0 != .sun && $0 != .moon })
+        let earth = needsEarth ? VSOP87D.earthPosition(tau: tau) : nil
+
+        // Ascendant (reuse nutation)
         var ascResult: AscendantResult?
         if includeAscendant, let coord = coordinate {
-            ascResult = try AscendantEngine.compute(for: moment, coordinate: coord)
+            try coord.validateForAscendant()
+            let meanObl = Obliquity.meanObliquity(julianCenturiesTT: t)
+            let trueObl = meanObl + nut.obliquity / 3600.0
+            let lastDeg = SiderealTime.last(
+                jdUT: jdUT, longitude: coord.longitude,
+                nutationLongitude: nut.longitude, trueObliquity: trueObl
+            )
+            let ascLon = AscendantEngine.ascendantLongitude(
+                lastDegrees: lastDeg,
+                trueObliquityDegrees: trueObl,
+                latitudeDegrees: coord.latitude
+            )
+            ascResult = AscendantResult(
+                eclipticLongitude: ascLon,
+                sign: ZodiacMapper.sign(forLongitude: ascLon),
+                degreeInSign: ZodiacMapper.degreeInSign(longitude: ascLon),
+                localSiderealTimeDegrees: lastDeg,
+                julianDayUT: jdUT,
+                trueObliquity: trueObl,
+                isBoundaryCase: ZodiacMapper.isBoundaryCase(longitude: ascLon)
+            )
         }
 
+        // Body positions (reuse tau, t, nutation, earth)
         var positions: [CelestialBody: CelestialPosition] = [:]
         for body in bodies {
-            positions[body] = try planetPosition(body, for: moment)
+            let raw: CelestialPosition
+            switch body {
+            case .sun:
+                raw = SolarPosition.compute(tau: tau, t: t, earth: earth!)
+            case .moon:
+                raw = ELP2000.compute(julianCenturiesTT: t)
+            default:
+                raw = PlanetaryPosition.compute(body, tau: tau, earth: earth!)
+            }
+            positions[body] = applyingNutation(to: raw, nutationArcsec: nut.longitude)
         }
 
         return NatalPositions(
