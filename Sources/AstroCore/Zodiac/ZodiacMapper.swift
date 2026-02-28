@@ -4,7 +4,7 @@ import Foundation
 enum ZodiacMapper {
     /// Map ecliptic longitude [0, 360) to a zodiac sign.
     static func sign(forLongitude longitude: Double) -> ZodiacSign {
-        guard longitude.isFinite else { return .aries }
+        precondition(longitude.isFinite, "ZodiacMapper received non-finite longitude")
         let normalized = AngleMath.normalized(degrees: longitude)
         let index = Int(normalized / 30.0) % 12
         return ZodiacSign(rawValue: index)!
