@@ -46,9 +46,18 @@ dependencies: [
 .target(
     name: "YourTarget",
     dependencies: [
-        "AstroCore",
-        "AstroCoreLocations",  // 可选：城市坐标数据库
+        "AstroCore",              // ~1.7 MB — 核心天文计算
+        "AstroCoreLocations",     // ~8 MB — 可选：33,000+ 城市坐标数据库
     ]
+),
+```
+
+如果你的 App 已有城市/坐标数据，可以只引入核心模块：
+
+```swift
+.target(
+    name: "YourTarget",
+    dependencies: ["AstroCore"]  // 只需 ~1.7 MB
 ),
 ```
 

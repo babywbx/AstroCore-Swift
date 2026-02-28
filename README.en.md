@@ -46,9 +46,18 @@ Then add as a target dependency:
 .target(
     name: "YourTarget",
     dependencies: [
-        "AstroCore",
-        "AstroCoreLocations",  // Optional: city coordinate database
+        "AstroCore",              // ~1.7 MB — core astronomical computation
+        "AstroCoreLocations",     // ~8 MB — optional: 33,000+ city coordinate database
     ]
+),
+```
+
+If your app already has city/coordinate data, import only the core module:
+
+```swift
+.target(
+    name: "YourTarget",
+    dependencies: ["AstroCore"]  // only ~1.7 MB
 ),
 ```
 
