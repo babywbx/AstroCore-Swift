@@ -7,14 +7,19 @@ public enum AstroCalculator {
         try JulianDay.julianDay(for: moment)
     }
 
-    /// Returns local sidereal time in degrees.
-    /// Phase 1: returns LMST. Upgraded to LAST once nutation ships.
+    /// Returns Local Apparent Sidereal Time in degrees.
     public static func localSiderealTimeDegrees(
         for moment: CivilMoment, longitude: Double
     ) throws -> Double {
         let jd = try JulianDay.julianDay(for: moment)
-        return AngleMath.normalized(
-            degrees: SiderealTime.gmst(jdUT: jd) + longitude
+        let dt = DeltaT.deltaT(decimalYear: moment.decimalYear)
+        let tTT = JulianDay.julianCenturiesTT(jdUT: jd, deltaT: dt)
+        let nut = Nutation.compute(julianCenturiesTT: tTT)
+        let meanObl = Obliquity.meanObliquity(julianCenturiesTT: tTT)
+        let trueObl = meanObl + nut.obliquity / 3600.0
+        return SiderealTime.last(
+            jdUT: jd, longitude: longitude,
+            nutationLongitude: nut.longitude, trueObliquity: trueObl
         )
     }
 
