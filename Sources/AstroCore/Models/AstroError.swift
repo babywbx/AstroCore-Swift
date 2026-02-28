@@ -5,4 +5,5 @@ public enum AstroError: Error, Sendable, Equatable {
     case invalidTimeZoneIdentifier(String)
     case dateConversionFailed
     case unsupportedYearRange(Int)
+    case missingCoordinateForAscendant
 }
