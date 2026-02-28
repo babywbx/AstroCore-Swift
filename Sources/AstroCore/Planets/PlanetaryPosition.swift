@@ -41,14 +41,15 @@ enum PlanetaryPosition {
 
         let lonDeg = AngleMath.normalized(degrees: AngleMath.toDegrees(lonRad))
         let latDeg = AngleMath.toDegrees(latRad)
+        let zodiac = ZodiacMapper.details(forNormalizedLongitude: lonDeg)
 
         return CelestialPosition(
             body: body,
             longitude: lonDeg,
             latitude: latDeg,
-            sign: ZodiacMapper.sign(forLongitude: lonDeg),
-            degreeInSign: ZodiacMapper.degreeInSign(longitude: lonDeg),
-            isBoundaryCase: ZodiacMapper.isBoundaryCase(longitude: lonDeg)
+            sign: zodiac.sign,
+            degreeInSign: zodiac.degreeInSign,
+            isBoundaryCase: zodiac.isBoundaryCase
         )
     }
 

@@ -87,18 +87,15 @@ enum ELP2000 {
 
         let lonDeg = AngleMath.normalized(degrees: lp + sumL / 1_000_000.0)
         let latDeg = sumB / 1_000_000.0
-
-        let sign = ZodiacMapper.sign(forLongitude: lonDeg)
-        let degInSign = ZodiacMapper.degreeInSign(longitude: lonDeg)
-        let boundary = ZodiacMapper.isBoundaryCase(longitude: lonDeg)
+        let zodiac = ZodiacMapper.details(forNormalizedLongitude: lonDeg)
 
         return CelestialPosition(
             body: .moon,
             longitude: lonDeg,
             latitude: latDeg,
-            sign: sign,
-            degreeInSign: degInSign,
-            isBoundaryCase: boundary
+            sign: zodiac.sign,
+            degreeInSign: zodiac.degreeInSign,
+            isBoundaryCase: zodiac.isBoundaryCase
         )
     }
 

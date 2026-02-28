@@ -30,19 +30,16 @@ enum AscendantEngine {
             trueObliquityDegrees: trueObl,
             latitudeDegrees: coordinate.latitude
         )
-
-        let sign = ZodiacMapper.sign(forLongitude: ascLon)
-        let degInSign = ZodiacMapper.degreeInSign(longitude: ascLon)
-        let boundary = ZodiacMapper.isBoundaryCase(longitude: ascLon)
+        let zodiac = ZodiacMapper.details(forNormalizedLongitude: ascLon)
 
         return AscendantResult(
             eclipticLongitude: ascLon,
-            sign: sign,
-            degreeInSign: degInSign,
+            sign: zodiac.sign,
+            degreeInSign: zodiac.degreeInSign,
             localSiderealTimeDegrees: lastDeg,
             julianDayUT: jdUT,
             trueObliquity: trueObl,
-            isBoundaryCase: boundary
+            isBoundaryCase: zodiac.isBoundaryCase
         )
     }
 

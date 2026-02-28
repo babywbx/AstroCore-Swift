@@ -32,18 +32,15 @@ enum SolarPosition {
         // Convert to degrees and normalize
         let lonDeg = AngleMath.normalized(degrees: AngleMath.toDegrees(sunLon))
         let latDeg = AngleMath.toDegrees(corrLat)
-
-        let sign = ZodiacMapper.sign(forLongitude: lonDeg)
-        let degInSign = ZodiacMapper.degreeInSign(longitude: lonDeg)
-        let boundary = ZodiacMapper.isBoundaryCase(longitude: lonDeg)
+        let zodiac = ZodiacMapper.details(forNormalizedLongitude: lonDeg)
 
         return CelestialPosition(
             body: .sun,
             longitude: lonDeg,
             latitude: latDeg,
-            sign: sign,
-            degreeInSign: degInSign,
-            isBoundaryCase: boundary
+            sign: zodiac.sign,
+            degreeInSign: zodiac.degreeInSign,
+            isBoundaryCase: zodiac.isBoundaryCase
         )
     }
 }

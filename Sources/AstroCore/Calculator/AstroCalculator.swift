@@ -107,19 +107,21 @@ public enum AstroCalculator {
                 trueObliquityDegrees: trueObl,
                 latitudeDegrees: coord.latitude
             )
+            let zodiac = ZodiacMapper.details(forNormalizedLongitude: ascLon)
             ascResult = AscendantResult(
                 eclipticLongitude: ascLon,
-                sign: ZodiacMapper.sign(forLongitude: ascLon),
-                degreeInSign: ZodiacMapper.degreeInSign(longitude: ascLon),
+                sign: zodiac.sign,
+                degreeInSign: zodiac.degreeInSign,
                 localSiderealTimeDegrees: lastDeg,
                 julianDayUT: jdUT,
                 trueObliquity: trueObl,
-                isBoundaryCase: ZodiacMapper.isBoundaryCase(longitude: ascLon)
+                isBoundaryCase: zodiac.isBoundaryCase
             )
         }
 
         // Body positions (reuse tau, t, nutation, earth)
         var positions: [CelestialBody: CelestialPosition] = [:]
+        positions.reserveCapacity(bodies.count)
         for body in bodies {
             let raw: CelestialPosition
             switch body {
@@ -160,13 +162,14 @@ public enum AstroCalculator {
         let longitude = AngleMath.normalized(
             degrees: position.longitude + nutationArcsec / 3600.0
         )
+        let zodiac = ZodiacMapper.details(forNormalizedLongitude: longitude)
         return CelestialPosition(
             body: position.body,
             longitude: longitude,
             latitude: position.latitude,
-            sign: ZodiacMapper.sign(forLongitude: longitude),
-            degreeInSign: ZodiacMapper.degreeInSign(longitude: longitude),
-            isBoundaryCase: ZodiacMapper.isBoundaryCase(longitude: longitude)
+            sign: zodiac.sign,
+            degreeInSign: zodiac.degreeInSign,
+            isBoundaryCase: zodiac.isBoundaryCase
         )
     }
 }
