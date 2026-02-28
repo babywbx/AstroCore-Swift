@@ -8,14 +8,12 @@ enum VSOP87DParser {
         let lines = content.components(separatedBy: .newlines)
 
         // Map: "L0" → [(A, B, C), ...], "L1" → [...], etc.
-        var series: [String: [(a: String, b: String, c: String)]] = [:]
+        // Values are parsed to Double first to prevent code injection from untrusted input.
+        var series: [String: [(a: Double, b: Double, c: Double)]] = [:]
         var currentKey = ""
 
         for line in lines {
             if line.contains("VSOP87") && line.contains("*T**") {
-                // Header line — extract coordinate index and power
-                // Format: "VSOP87 ... VARIABLE 1 (LBR) *T**0 ..."
-                // The coordinate index (1=L, 2=B, 3=R) and power are in specific positions
                 let coordChar = parseCoordinateChar(line)
                 let power = parsePower(line)
                 currentKey = "\(coordChar)\(power)"
@@ -26,15 +24,23 @@ enum VSOP87DParser {
                 && !currentKey.isEmpty
             {
                 // Term line: fixed-width format
-                // A starts at column 79 (0-indexed), B at ~97, C at ~111
                 guard line.count >= 131 else { continue }
-                let a = extractField(line, start: 79, end: 96)
-                let b = extractField(line, start: 97, end: 110)
-                let c = extractField(line, start: 111, end: 130)
-                if !a.isEmpty {
-                    series[currentKey]?.append((a: a, b: b, c: c))
-                }
+                let aStr = extractField(line, start: 79, end: 96)
+                let bStr = extractField(line, start: 97, end: 110)
+                let cStr = extractField(line, start: 111, end: 130)
+                // Parse to Double — rejects any non-numeric content
+                guard let a = Double(aStr),
+                    let b = Double(bStr),
+                    let c = Double(cStr),
+                    a.isFinite && b.isFinite && c.isFinite
+                else { continue }
+                series[currentKey]?.append((a: a, b: b, c: c))
             }
+        }
+
+        // Validate planet name is alphanumeric
+        guard planetName.allSatisfy({ $0.isLetter }) else {
+            throw DataGenError.invalidData(detail: "Invalid planet name: \(planetName)")
         }
 
         // Generate Swift source
@@ -58,9 +64,16 @@ enum VSOP87DParser {
         }
 
         for key in sortedKeys {
+            // Validate key is a valid series name (L0-L5, B0-B5, R0-R5)
+            guard key.count == 2,
+                "LBR".contains(key.first!),
+                ("0"..."5").contains(String(key.last!))
+            else { continue }
+
             let terms = series[key]!
             swift += "        static let \(key): [(Double, Double, Double)] = [\n"
             for t in terms {
+                // Serialize from parsed Double values (not raw strings)
                 swift += "            (\(t.a), \(t.b), \(t.c)),\n"
             }
             swift += "        ]\n\n"

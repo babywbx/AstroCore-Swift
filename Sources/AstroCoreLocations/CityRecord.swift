@@ -12,8 +12,11 @@ public struct CityRecord: Identifiable, Sendable, Hashable, Codable {
     public let timeZoneIdentifier: String
     public let population: Int?
 
+    /// Returns a GeoCoordinate for this city.
+    /// City data is pre-validated; throws only if data is corrupted.
     public var coordinate: GeoCoordinate {
-        // Safe: city data is pre-validated
-        try! GeoCoordinate(latitude: latitude, longitude: longitude)
+        get throws {
+            try GeoCoordinate(latitude: latitude, longitude: longitude)
+        }
     }
 }

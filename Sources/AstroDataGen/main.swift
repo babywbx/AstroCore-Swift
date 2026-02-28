@@ -52,7 +52,10 @@ func run() async throws {
         let geonamesZip = cacheDir.appendingPathComponent("cities15000.zip")
         let url = URL(string: "https://download.geonames.org/export/dump/cities15000.zip")!
         try await Downloader.download(url: url, to: geonamesZip, skipIfExists: false)
-        try ZipExtractor.extract(geonamesZip, to: cacheDir)
+        try ZipExtractor.extract(
+            geonamesZip, to: cacheDir,
+            expectedFiles: ["cities15000.txt"]
+        )
         try? FileManager.default.removeItem(at: geonamesZip)
     } else {
         print("  Cached: cities15000.txt")
