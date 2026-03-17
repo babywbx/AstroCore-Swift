@@ -36,8 +36,8 @@ struct BenchmarkTests {
             timeZoneIdentifier: "UTC"
         )
         let iterations = 10000
-        let result = try benchmark(iterations: iterations) {
-            _ = try AstroCalculator.sunPosition(for: moment)
+        let result = benchmark(iterations: iterations) {
+            _ = AstroCalculator.sunPosition(for: moment)
         }
         print("☀️  Sun position: \(formatMicroseconds(result.perCallMicroseconds)) µs/call (\(iterations) iterations, \(String(format: "%.3f", result.totalSeconds))s total)")
     }
@@ -48,8 +48,8 @@ struct BenchmarkTests {
             timeZoneIdentifier: "UTC"
         )
         let iterations = 100000
-        let result = try benchmark(iterations: iterations, warmup: 1000) {
-            _ = try AstroCalculator.moonPosition(for: moment)
+        let result = benchmark(iterations: iterations, warmup: 1000) {
+            _ = AstroCalculator.moonPosition(for: moment)
         }
         print("🌙  Moon position: \(formatMicroseconds(result.perCallMicroseconds)) µs/call (\(iterations) iterations, \(String(format: "%.3f", result.totalSeconds))s total)")
     }
@@ -62,8 +62,8 @@ struct BenchmarkTests {
         let bodies: [CelestialBody] = [.mercury, .venus, .mars, .jupiter, .saturn]
         let iterations = 5000
         for body in bodies {
-            let result = try benchmark(iterations: iterations) {
-                _ = try AstroCalculator.planetPosition(body, for: moment)
+            let result = benchmark(iterations: iterations) {
+                _ = AstroCalculator.planetPosition(body, for: moment)
             }
             print("🪐  \(body) position: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
         }

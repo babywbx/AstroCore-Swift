@@ -3,28 +3,28 @@ import Foundation
 // Single public entry point for all astronomical calculations
 public enum AstroCalculator {
     // --- Low-level (stable API) ---
-    public static func julianDayUT(for moment: CivilMoment) throws -> Double {
+    public static func julianDayUT(for moment: CivilMoment) -> Double {
         moment.julianDayUT
     }
 
     /// Returns Local Apparent Sidereal Time in degrees.
     public static func localSiderealTimeDegrees(
         for moment: CivilMoment, longitude: Double
-    ) throws -> Double {
+    ) -> Double {
         moment.localApparentSiderealTime(longitude: longitude)
     }
 
     // --- Ascendant (requires coordinate) ---
     public static func ascendant(
         for moment: CivilMoment, coordinate: GeoCoordinate
-    ) throws -> AscendantResult {
+    ) throws(AstroError) -> AscendantResult {
         try AscendantEngine.compute(for: moment, coordinate: coordinate)
     }
 
     // --- Individual body positions (apparent tropical longitude) ---
     public static func sunPosition(
         for moment: CivilMoment
-    ) throws -> CelestialPosition {
+    ) -> CelestialPosition {
         let (tau, t) = timeParameters(for: moment)
         return applyingNutation(
             to: SolarPosition.compute(tau: tau, t: t),
@@ -34,7 +34,7 @@ public enum AstroCalculator {
 
     public static func moonPosition(
         for moment: CivilMoment
-    ) throws -> CelestialPosition {
+    ) -> CelestialPosition {
         let (_, t) = timeParameters(for: moment)
         return applyingNutation(
             to: ELP2000.compute(julianCenturiesTT: t),
@@ -44,11 +44,11 @@ public enum AstroCalculator {
 
     public static func planetPosition(
         _ body: CelestialBody, for moment: CivilMoment
-    ) throws -> CelestialPosition {
+    ) -> CelestialPosition {
         switch body {
-        case .sun: return try sunPosition(for: moment)
-        case .moon: return try moonPosition(for: moment)
-        default:
+        case .sun: return sunPosition(for: moment)
+        case .moon: return moonPosition(for: moment)
+        case .mercury, .venus, .mars, .jupiter, .saturn:
             let (tau, _) = timeParameters(for: moment)
             return applyingNutation(
                 to: PlanetaryPosition.compute(body, tau: tau),
@@ -63,9 +63,9 @@ public enum AstroCalculator {
         coordinate: GeoCoordinate? = nil,
         bodies: Set<CelestialBody> = [],
         includeAscendant: Bool = false
-    ) throws -> NatalPositions {
+    ) throws(AstroError) -> NatalPositions {
         if includeAscendant && coordinate == nil {
-            throw AstroError.missingCoordinateForAscendant
+            throw .missingCoordinateForAscendant
         }
 
         // Compute shared values once
@@ -111,11 +111,16 @@ public enum AstroCalculator {
             let raw: RawCelestialPosition
             switch body {
             case .sun:
-                raw = SolarPosition.compute(tau: tau, t: t, earth: earth!)
+                // earth is guaranteed non-nil by needsEarth; fallback avoids force unwrap
+                let e = earth ?? VSOP87D.earthPosition(tau: tau)
+                raw = SolarPosition.compute(tau: tau, t: t, earth: e)
             case .moon:
                 raw = ELP2000.compute(julianCenturiesTT: t)
-            default:
-                raw = PlanetaryPosition.compute(body, tau: tau, earthRect: earthRect!)
+            case .mercury, .venus, .mars, .jupiter, .saturn:
+                let er = earthRect ?? PlanetaryPosition.rectangular(
+                    from: VSOP87D.earthPosition(tau: tau)
+                )
+                raw = PlanetaryPosition.compute(body, tau: tau, earthRect: er)
             }
             positions[body] = applyingNutation(to: raw, nutationArcsec: nutationLongitude)
         }

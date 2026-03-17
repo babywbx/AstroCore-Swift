@@ -41,7 +41,6 @@ struct ObliquityTests {
 @Suite("Ascendant Tests")
 struct AscendantTests {
     // Test: New York City, 2000-01-01 12:00 UTC
-    // NYC: 40.7128°N, 74.0060°W
     @Test func nycJ2000() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1,
@@ -51,7 +50,6 @@ struct AscendantTests {
         let coord = try GeoCoordinate(latitude: 40.7128, longitude: -74.0060)
         let result = try AstroCalculator.ascendant(for: moment, coordinate: coord)
 
-        // Ascendant should be a valid sign
         #expect(result.eclipticLongitude >= 0 && result.eclipticLongitude < 360)
         #expect(result.degreeInSign >= 0 && result.degreeInSign < 30)
     }
@@ -65,7 +63,6 @@ struct AscendantTests {
         )
         let coord = try GeoCoordinate(latitude: 35.6762, longitude: 139.6503)
         let result = try AstroCalculator.ascendant(for: moment, coordinate: coord)
-        // Leo is expected for this date/time/location (ASC ~120-150°)
         #expect(result.eclipticLongitude >= 0 && result.eclipticLongitude < 360)
     }
 
@@ -118,7 +115,7 @@ struct AscendantTests {
         #expect(result.eclipticLongitude >= 0 && result.eclipticLongitude < 360)
     }
 
-    // Sydney (southern hemisphere): -33.8688°S, 151.2093°E
+    // Sydney (southern hemisphere)
     @Test func sydneySouthernHemisphere() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1,
@@ -139,12 +136,8 @@ struct AscendantTests {
         )
         let coord = try GeoCoordinate(latitude: 0.0, longitude: 0.0)
         let result = try AstroCalculator.ascendant(for: moment, coordinate: coord)
-        // At equator with LAST ≈ 280.46°, the ascendant should be roughly in Aries area
-        // The key check: the ascendant should NOT be 180° off from the correct value
         #expect(result.eclipticLongitude >= 0 && result.eclipticLongitude < 360)
-        // Verify it's not in the descendant half (wrong by 180°)
         let lstMod = result.localSiderealTimeDegrees.truncatingRemainder(dividingBy: 360)
-        // Ascendant should be roughly opposite the LAST (± obliquity effects)
         let diff = abs(result.eclipticLongitude - lstMod)
         #expect(diff > 30 || diff < 330) // Not near LAST
     }
@@ -168,10 +161,25 @@ struct AscendantTests {
             hour: 12, minute: 0, second: 0,
             timeZoneIdentifier: "UTC"
         )
-        let last = try AstroCalculator.localSiderealTimeDegrees(
+        let last = AstroCalculator.localSiderealTimeDegrees(
             for: moment, longitude: 0.0
         )
         // GMST at J2000.0 noon UTC ≈ 280.46° + equation of equinoxes
         #expect(last > 280.0 && last < 281.0)
+    }
+
+    // Date line test: longitude ±180° should produce valid results
+    @Test func dateLineAscendant() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 6, day: 1,
+            hour: 12, minute: 0, second: 0,
+            timeZoneIdentifier: "UTC"
+        )
+        let west = try GeoCoordinate(latitude: 0.0, longitude: 180.0)
+        let east = try GeoCoordinate(latitude: 0.0, longitude: -180.0)
+        let r1 = try AstroCalculator.ascendant(for: moment, coordinate: west)
+        let r2 = try AstroCalculator.ascendant(for: moment, coordinate: east)
+        // ±180° is the same meridian, LAST should be identical
+        #expect(abs(r1.localSiderealTimeDegrees - r2.localSiderealTimeDegrees) < 0.001)
     }
 }

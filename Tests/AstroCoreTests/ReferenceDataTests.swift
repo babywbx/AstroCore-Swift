@@ -14,7 +14,7 @@ struct SunValidationTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
+        let pos = AstroCalculator.sunPosition(for: moment)
         #expect(abs(pos.longitude - 280.369) < 0.05)
         #expect(pos.sign == .capricorn)
     }
@@ -25,7 +25,7 @@ struct SunValidationTests {
             year: 2000, month: 6, day: 21, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
+        let pos = AstroCalculator.sunPosition(for: moment)
         #expect(abs(pos.longitude - 90.406) < 0.05)
         #expect(pos.sign == .cancer)
     }
@@ -36,7 +36,7 @@ struct SunValidationTests {
             year: 1990, month: 3, day: 20, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
+        let pos = AstroCalculator.sunPosition(for: moment)
         #expect(abs(pos.longitude - 359.614) < 0.05)
         #expect(pos.sign == .pisces)
     }
@@ -47,7 +47,7 @@ struct SunValidationTests {
             year: 2024, month: 12, day: 21, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
+        let pos = AstroCalculator.sunPosition(for: moment)
         #expect(abs(pos.longitude - 270.113) < 0.05)
         #expect(pos.sign == .capricorn)
     }
@@ -61,7 +61,7 @@ struct MoonValidationTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.moonPosition(for: moment)
+        let pos = AstroCalculator.moonPosition(for: moment)
         // ELP2000 truncated series; tolerance ≤ 0.5°
         #expect(abs(pos.longitude - 223.32) < 0.5)
         #expect(pos.sign == .scorpio)
@@ -78,8 +78,8 @@ struct MoonValidationTests {
             year: 2000, month: 6, day: 2, hour: 0, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let p1 = try AstroCalculator.moonPosition(for: m1)
-        let p2 = try AstroCalculator.moonPosition(for: m2)
+        let p1 = AstroCalculator.moonPosition(for: m1)
+        let p2 = AstroCalculator.moonPosition(for: m2)
         var diff = p2.longitude - p1.longitude
         if diff < 0 { diff += 360.0 }
         // Computed: ~14.82°/day, within normal range [11°, 15°]
@@ -97,7 +97,7 @@ struct PlanetValidationTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.mercury, for: moment)
+        let pos = AstroCalculator.planetPosition(.mercury, for: moment)
         #expect(abs(pos.longitude - 271.895) < 0.15)
         #expect(pos.sign == .capricorn)
     }
@@ -108,7 +108,7 @@ struct PlanetValidationTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.venus, for: moment)
+        let pos = AstroCalculator.planetPosition(.venus, for: moment)
         #expect(abs(pos.longitude - 241.570) < 0.15)
         #expect(pos.sign == .sagittarius)
     }
@@ -119,7 +119,7 @@ struct PlanetValidationTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.mars, for: moment)
+        let pos = AstroCalculator.planetPosition(.mars, for: moment)
         #expect(abs(pos.longitude - 327.967) < 0.15)
         #expect(pos.sign == .aquarius)
     }
@@ -130,7 +130,7 @@ struct PlanetValidationTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.jupiter, for: moment)
+        let pos = AstroCalculator.planetPosition(.jupiter, for: moment)
         #expect(abs(pos.longitude - 25.252) < 0.15)
         #expect(pos.sign == .aries)
     }
@@ -141,7 +141,7 @@ struct PlanetValidationTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.saturn, for: moment)
+        let pos = AstroCalculator.planetPosition(.saturn, for: moment)
         #expect(abs(pos.longitude - 40.393) < 0.15)
         #expect(pos.sign == .taurus)
     }
@@ -194,7 +194,6 @@ struct AscendantReferenceTests {
         let coord = try GeoCoordinate(latitude: -33.8688, longitude: 151.2093)
         let result = try AstroCalculator.ascendant(for: moment, coordinate: coord)
         #expect(result.eclipticLongitude >= 0 && result.eclipticLongitude < 360)
-        #expect(result.sign != nil)
     }
 
     // Berlin, 1975-09-20 15:00 CET → ASC ≈ 277.54° (Capricorn 7°33')
@@ -325,7 +324,7 @@ struct FullChartValidationTests {
             year: 1800, month: 6, day: 15, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
+        let pos = AstroCalculator.sunPosition(for: moment)
         #expect(pos.longitude >= 0 && pos.longitude < 360)
         #expect(pos.sign == .gemini || pos.sign == .cancer)
     }
@@ -336,7 +335,7 @@ struct FullChartValidationTests {
             year: 2100, month: 6, day: 15, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
+        let pos = AstroCalculator.sunPosition(for: moment)
         #expect(pos.longitude >= 0 && pos.longitude < 360)
         #expect(pos.sign == .gemini || pos.sign == .cancer)
     }

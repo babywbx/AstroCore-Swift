@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 
 @testable import AstroCore
 
@@ -18,10 +19,6 @@ struct JulianDayTests {
         #expect(abs(jd - 2451545.0) < 0.000001)
     }
 
-    // Meeus Example 7.b: 333 Jan 27.5 → JD 1842713.0
-    // This is Julian calendar, but our implementation is Gregorian only.
-    // Gregorian: 333-01-27.5 with Gregorian B correction
-    // Let's use a known Gregorian date instead.
     // 1999-01-01 0:00 UTC → JD 2451179.5
     @Test func jan1_1999() {
         let jd = JulianDay.julianDay(year: 1999, month: 1, dayFraction: 1.0)
@@ -46,8 +43,7 @@ struct JulianDayTests {
             hour: 12, minute: 0, second: 0,
             timeZoneIdentifier: "UTC"
         )
-        let jd = JulianDay.julianDay(for: moment)
-        #expect(abs(jd - 2451545.0) < 0.000001)
+        #expect(abs(moment.julianDayUT - 2451545.0) < 0.000001)
     }
 }
 
@@ -168,6 +164,80 @@ struct CivilMomentTests {
         #expect(utc.day == 2)
         #expect(utc.hour == 0)
     }
+
+    // DST spring-forward gap: 2:30 AM does not exist
+    @Test func dstSpringForwardGap() {
+        // 2000-04-02 02:30 America/New_York — DST gap
+        #expect(throws: AstroError.self) {
+            try CivilMoment(
+                year: 2000, month: 4, day: 2,
+                hour: 2, minute: 30, second: 0,
+                timeZoneIdentifier: "America/New_York"
+            )
+        }
+    }
+
+    // DST fall-back fold: 1:30 AM exists twice, should not throw
+    @Test func dstFallBackFold() throws {
+        // 2000-10-29 01:30 America/New_York — DST fold (ambiguous)
+        // Should succeed (picks one deterministically)
+        let moment = try CivilMoment(
+            year: 2000, month: 10, day: 29,
+            hour: 1, minute: 30, second: 0,
+            timeZoneIdentifier: "America/New_York"
+        )
+        #expect(moment.year == 2000)
+        #expect(moment.month == 10)
+    }
+
+    // Invalid month/day/hour/minute/second boundaries
+    @Test func invalidMonth() {
+        #expect(throws: AstroError.self) {
+            try CivilMoment(
+                year: 2000, month: 0, day: 1,
+                hour: 0, minute: 0, timeZoneIdentifier: "UTC"
+            )
+        }
+        #expect(throws: AstroError.self) {
+            try CivilMoment(
+                year: 2000, month: 13, day: 1,
+                hour: 0, minute: 0, timeZoneIdentifier: "UTC"
+            )
+        }
+    }
+
+    @Test func invalidHourMinuteSecond() {
+        #expect(throws: AstroError.self) {
+            try CivilMoment(
+                year: 2000, month: 1, day: 1,
+                hour: 24, minute: 0, timeZoneIdentifier: "UTC"
+            )
+        }
+        #expect(throws: AstroError.self) {
+            try CivilMoment(
+                year: 2000, month: 1, day: 1,
+                hour: 0, minute: 60, timeZoneIdentifier: "UTC"
+            )
+        }
+        #expect(throws: AstroError.self) {
+            try CivilMoment(
+                year: 2000, month: 1, day: 1,
+                hour: 0, minute: 0, second: 60, timeZoneIdentifier: "UTC"
+            )
+        }
+    }
+
+    // Codable roundtrip
+    @Test func codableRoundtrip() throws {
+        let original = try CivilMoment(
+            year: 2000, month: 6, day: 15,
+            hour: 12, minute: 30, second: 45,
+            timeZoneIdentifier: "Asia/Tokyo"
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(CivilMoment.self, from: data)
+        #expect(original == decoded)
+    }
 }
 
 @Suite("GeoCoordinate Tests")
@@ -182,11 +252,26 @@ struct GeoCoordinateTests {
         #expect(throws: AstroError.self) {
             try GeoCoordinate(latitude: 91.0, longitude: 0.0)
         }
+        #expect(throws: AstroError.self) {
+            try GeoCoordinate(latitude: -91.0, longitude: 0.0)
+        }
     }
 
     @Test func invalidLongitude() {
         #expect(throws: AstroError.self) {
             try GeoCoordinate(latitude: 0.0, longitude: 181.0)
+        }
+        #expect(throws: AstroError.self) {
+            try GeoCoordinate(latitude: 0.0, longitude: -181.0)
+        }
+    }
+
+    @Test func nanAndInfinity() {
+        #expect(throws: AstroError.self) {
+            try GeoCoordinate(latitude: .nan, longitude: 0.0)
+        }
+        #expect(throws: AstroError.self) {
+            try GeoCoordinate(latitude: 0.0, longitude: .infinity)
         }
     }
 
@@ -201,6 +286,31 @@ struct GeoCoordinateTests {
         // Exactly 85° should be fine
         let coord = try GeoCoordinate(latitude: 85.0, longitude: 0.0)
         try coord.validateForAscendant()
+    }
+
+    @Test func southPolarBoundary() throws {
+        let valid = try GeoCoordinate(latitude: -85.0, longitude: 0.0)
+        try valid.validateForAscendant()
+
+        let extreme = try GeoCoordinate(latitude: -85.1, longitude: 0.0)
+        #expect(throws: AstroError.self) {
+            try extreme.validateForAscendant()
+        }
+    }
+
+    @Test func boundaryCoordinates() throws {
+        // Exact boundary values should be valid
+        _ = try GeoCoordinate(latitude: 90.0, longitude: 180.0)
+        _ = try GeoCoordinate(latitude: -90.0, longitude: -180.0)
+        _ = try GeoCoordinate(latitude: 0.0, longitude: 0.0)
+    }
+
+    // Codable roundtrip
+    @Test func codableRoundtrip() throws {
+        let original = try GeoCoordinate(latitude: 40.7128, longitude: -74.0060)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(GeoCoordinate.self, from: data)
+        #expect(original == decoded)
     }
 }
 
@@ -238,6 +348,12 @@ struct AngleMathTests {
     @Test func normalize720() {
         #expect(AngleMath.normalized(degrees: 720.0) == 0.0)
     }
+
+    @Test func normalizeNegativeZero() {
+        let result = AngleMath.normalized(degrees: -0.0)
+        #expect(result == 0.0)
+        #expect(result.sign == .plus) // must be +0.0, not -0.0
+    }
 }
 
 @Suite("ZodiacMapper Tests")
@@ -266,5 +382,13 @@ struct ZodiacMapperTests {
     @Test func degreeInSign() {
         let deg = ZodiacMapper.degreeInSign(longitude: 45.5)
         #expect(abs(deg - 15.5) < 0.001)
+    }
+
+    // ZodiacSign.contains wrapping for Pisces
+    @Test func piscesContains() {
+        #expect(ZodiacSign.pisces.contains(longitude: 350.0))
+        #expect(ZodiacSign.pisces.contains(longitude: 330.0))
+        #expect(!ZodiacSign.pisces.contains(longitude: 0.0))
+        #expect(!ZodiacSign.pisces.contains(longitude: 329.9))
     }
 }

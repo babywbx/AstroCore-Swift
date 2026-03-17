@@ -26,11 +26,6 @@ enum JulianDay {
             + dayFraction + b - 1524.5
     }
 
-    /// Compute JD_UT from CivilMoment (converts to UTC first).
-    static func julianDay(for moment: CivilMoment) -> Double {
-        moment.julianDayUT
-    }
-
     /// Julian centuries from J2000.0 (T_UT)
     static func julianCenturiesUT(jd: Double) -> Double {
         (jd - j2000) / 36525.0

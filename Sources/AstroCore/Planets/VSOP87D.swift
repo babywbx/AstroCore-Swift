@@ -73,20 +73,16 @@ enum VSOP87D {
     }
 
     /// Get heliocentric position series for a planet.
+    /// Sun and Moon use dedicated engines (SolarPosition, ELP2000).
     static func planetSeries(_ body: CelestialBody) -> SeriesBundle {
         switch body {
-        case .mercury:
-            return mercurySeries
-        case .venus:
-            return venusSeries
-        case .mars:
-            return marsSeries
-        case .jupiter:
-            return jupiterSeries
-        case .saturn:
-            return saturnSeries
-        default:
-            fatalError("VSOP87D not available for \(body)")
+        case .mercury: return mercurySeries
+        case .venus:   return venusSeries
+        case .mars:    return marsSeries
+        case .jupiter: return jupiterSeries
+        case .saturn:  return saturnSeries
+        case .sun, .moon:
+            fatalError("Use SolarPosition/ELP2000 for \(body)")
         }
     }
 

@@ -7,15 +7,13 @@ import Testing
 @Suite("Solar Position Tests")
 struct SolarPositionTests {
     // Sun position at J2000.0 (2000-01-01 12:00 TT)
-    // Expected: ~280.5° ecliptic longitude (Capricorn)
     @Test func sunAtJ2000() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1,
             hour: 12, minute: 0, second: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
-        // Sun around Jan 1 should be ~280° (Capricorn)
+        let pos = AstroCalculator.sunPosition(for: moment)
         #expect(pos.sign == .capricorn)
         #expect(abs(pos.longitude - 280.5) < 1.0)
     }
@@ -27,7 +25,7 @@ struct SolarPositionTests {
             hour: 12, minute: 0, second: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
+        let pos = AstroCalculator.sunPosition(for: moment)
         #expect(abs(pos.longitude - 90.0) < 1.0)
         #expect(pos.sign == .gemini || pos.sign == .cancer)
     }
@@ -39,7 +37,7 @@ struct SolarPositionTests {
             hour: 12, minute: 0, second: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.sunPosition(for: moment)
+        let pos = AstroCalculator.sunPosition(for: moment)
         // Sun near 0° at vernal equinox
         #expect(pos.longitude < 2.0 || pos.longitude > 358.0)
     }
@@ -53,14 +51,12 @@ struct MoonPositionTests {
             hour: 12, minute: 0, second: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.moonPosition(for: moment)
-        // Moon moves ~13°/day, exact position at J2000.0 depends on ephemeris
+        let pos = AstroCalculator.moonPosition(for: moment)
         #expect(pos.longitude >= 0 && pos.longitude < 360)
-        #expect(abs(pos.latitude) < 6.0) // Moon latitude within ±5.3°
+        #expect(abs(pos.latitude) < 6.0)
     }
 
     @Test func moonSignChanges() throws {
-        // Moon changes sign roughly every 2.5 days
         let moment1 = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 0, minute: 0,
             timeZoneIdentifier: "UTC"
@@ -69,9 +65,8 @@ struct MoonPositionTests {
             year: 2000, month: 1, day: 5, hour: 0, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos1 = try AstroCalculator.moonPosition(for: moment1)
-        let pos2 = try AstroCalculator.moonPosition(for: moment2)
-        // After 4 days, Moon should have moved ~52°
+        let pos1 = AstroCalculator.moonPosition(for: moment1)
+        let pos2 = AstroCalculator.moonPosition(for: moment2)
         let diff = (pos2.longitude - pos1.longitude + 360.0)
             .truncatingRemainder(dividingBy: 360.0)
         #expect(diff > 40 && diff < 70)
@@ -80,55 +75,49 @@ struct MoonPositionTests {
 
 @Suite("Planetary Position Tests")
 struct PlanetaryPositionTests {
-    // Mercury at J2000.0
     @Test func mercuryAtJ2000() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.mercury, for: moment)
+        let pos = AstroCalculator.planetPosition(.mercury, for: moment)
         #expect(pos.longitude >= 0 && pos.longitude < 360)
-        // Mercury latitude should be within ±7°
         #expect(abs(pos.latitude) < 8.0)
     }
 
-    // Venus at J2000.0
     @Test func venusAtJ2000() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.venus, for: moment)
+        let pos = AstroCalculator.planetPosition(.venus, for: moment)
         #expect(pos.longitude >= 0 && pos.longitude < 360)
     }
 
-    // Mars at J2000.0
     @Test func marsAtJ2000() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.mars, for: moment)
+        let pos = AstroCalculator.planetPosition(.mars, for: moment)
         #expect(pos.longitude >= 0 && pos.longitude < 360)
     }
 
-    // Jupiter at J2000.0
     @Test func jupiterAtJ2000() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.jupiter, for: moment)
+        let pos = AstroCalculator.planetPosition(.jupiter, for: moment)
         #expect(pos.longitude >= 0 && pos.longitude < 360)
     }
 
-    // Saturn at J2000.0
     @Test func saturnAtJ2000() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let pos = try AstroCalculator.planetPosition(.saturn, for: moment)
+        let pos = AstroCalculator.planetPosition(.saturn, for: moment)
         #expect(pos.longitude >= 0 && pos.longitude < 360)
     }
 
@@ -138,8 +127,8 @@ struct PlanetaryPositionTests {
             year: 2000, month: 6, day: 15, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let direct = try AstroCalculator.sunPosition(for: moment)
-        let via = try AstroCalculator.planetPosition(.sun, for: moment)
+        let direct = AstroCalculator.sunPosition(for: moment)
+        let via = AstroCalculator.planetPosition(.sun, for: moment)
         #expect(abs(direct.longitude - via.longitude) < 0.0001)
     }
 }
@@ -161,14 +150,10 @@ struct NatalPositionsTests {
             includeAscendant: true
         )
 
-        // All 7 bodies should be present
         #expect(natal.bodies.count == 7)
         #expect(natal.ascendant != nil)
-
-        // Sun in Leo around Aug 15
         #expect(natal.bodies[.sun]?.sign == .leo)
 
-        // Verify all longitudes are valid
         for (_, pos) in natal.bodies {
             #expect(pos.longitude >= 0 && pos.longitude < 360)
         }
@@ -188,5 +173,17 @@ struct NatalPositionsTests {
         #expect(natal.ascendant == nil)
         #expect(natal.bodies.count == 2)
     }
-}
 
+    @Test func emptyBodiesSet() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 1, day: 1,
+            hour: 12, minute: 0, second: 0,
+            timeZoneIdentifier: "UTC"
+        )
+        let natal = try AstroCalculator.natalPositions(
+            for: moment, bodies: []
+        )
+        #expect(natal.bodies.isEmpty)
+        #expect(natal.ascendant == nil)
+    }
+}
