@@ -36,7 +36,7 @@
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/babywbx/AstroCore-Swift.git", from: "1.0.0"),
+    .package(url: "https://github.com/babywbx/AstroCore-Swift.git", from: "1.1.0"),
 ]
 ```
 
@@ -80,7 +80,7 @@ let moment = try CivilMoment(
     year: 2000, month: 6, day: 21, hour: 12, minute: 0,
     timeZoneIdentifier: "UTC"
 )
-let sun = try AstroCalculator.sunPosition(for: moment)
+let sun = AstroCalculator.sunPosition(for: moment)
 print(sun.sign.name)        // "Cancer"
 print(sun.sign.emoji)       // "♋"
 print(sun.longitude)        // 90.406° (夏至)
@@ -94,7 +94,7 @@ let moment = try CivilMoment(
     year: 2000, month: 1, day: 1, hour: 12, minute: 0,
     timeZoneIdentifier: "UTC"
 )
-let moon = try AstroCalculator.moonPosition(for: moment)
+let moon = AstroCalculator.moonPosition(for: moment)
 print(moon.sign.name)       // "Scorpio"
 print(moon.sign.emoji)      // "♏"
 print(moon.latitude)        // 5.17° (黄纬)
@@ -109,7 +109,7 @@ let moment = try CivilMoment(
 )
 
 // 单颗行星
-let venus = try AstroCalculator.planetPosition(.venus, for: moment)
+let venus = AstroCalculator.planetPosition(.venus, for: moment)
 print("\(venus.sign.emoji) Venus in \(venus.sign.name)")  // "♐ Venus in Sagittarius"
 
 // 支持的天体：.sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn
@@ -178,10 +178,10 @@ let asc = try AstroCalculator.ascendant(for: moment, coordinate: tokyo.coordinat
 
 ```swift
 // 儒略日
-let jd = try AstroCalculator.julianDayUT(for: moment)
+let jd = AstroCalculator.julianDayUT(for: moment)
 
 // 地方恒星时（度）
-let lst = try AstroCalculator.localSiderealTimeDegrees(for: moment, longitude: 139.65)
+let lst = AstroCalculator.localSiderealTimeDegrees(for: moment, longitude: 139.65)
 
 // 黄道十二宫
 let sign = ZodiacSign.leo
@@ -213,8 +213,8 @@ print(sign.contains(longitude: 135.0))  // true
 
 | 指标 | 数值 |
 |------|------|
-| 测试函数 | **93** |
-| 测试套件 | **20** |
+| 测试函数 | **119** |
+| 测试套件 | **23** |
 
 验证来源：
 

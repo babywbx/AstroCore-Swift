@@ -36,7 +36,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/babywbx/AstroCore-Swift.git", from: "1.0.0"),
+    .package(url: "https://github.com/babywbx/AstroCore-Swift.git", from: "1.1.0"),
 ]
 ```
 
@@ -80,7 +80,7 @@ let moment = try CivilMoment(
     year: 2000, month: 6, day: 21, hour: 12, minute: 0,
     timeZoneIdentifier: "UTC"
 )
-let sun = try AstroCalculator.sunPosition(for: moment)
+let sun = AstroCalculator.sunPosition(for: moment)
 print(sun.sign.name)        // "Cancer"
 print(sun.sign.emoji)       // "♋"
 print(sun.longitude)        // 90.406° (summer solstice)
@@ -94,7 +94,7 @@ let moment = try CivilMoment(
     year: 2000, month: 1, day: 1, hour: 12, minute: 0,
     timeZoneIdentifier: "UTC"
 )
-let moon = try AstroCalculator.moonPosition(for: moment)
+let moon = AstroCalculator.moonPosition(for: moment)
 print(moon.sign.name)       // "Scorpio"
 print(moon.sign.emoji)      // "♏"
 print(moon.latitude)        // 5.17° (ecliptic latitude)
@@ -109,7 +109,7 @@ let moment = try CivilMoment(
 )
 
 // Single planet
-let venus = try AstroCalculator.planetPosition(.venus, for: moment)
+let venus = AstroCalculator.planetPosition(.venus, for: moment)
 print("\(venus.sign.emoji) Venus in \(venus.sign.name)")  // "♐ Venus in Sagittarius"
 
 // Supported bodies: .sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn
@@ -178,10 +178,10 @@ let asc = try AstroCalculator.ascendant(for: moment, coordinate: tokyo.coordinat
 
 ```swift
 // Julian Day
-let jd = try AstroCalculator.julianDayUT(for: moment)
+let jd = AstroCalculator.julianDayUT(for: moment)
 
 // Local Apparent Sidereal Time (degrees)
-let lst = try AstroCalculator.localSiderealTimeDegrees(for: moment, longitude: 139.65)
+let lst = AstroCalculator.localSiderealTimeDegrees(for: moment, longitude: 139.65)
 
 // Zodiac signs
 let sign = ZodiacSign.leo
@@ -213,8 +213,8 @@ Verified against **JPL Horizons** (DE440/441 ephemeris) at 2000-01-01 12:00 UTC:
 
 | Metric | Value |
 |--------|-------|
-| Test functions | **93** |
-| Test suites | **20** |
+| Test functions | **119** |
+| Test suites | **23** |
 
 Validation sources:
 
