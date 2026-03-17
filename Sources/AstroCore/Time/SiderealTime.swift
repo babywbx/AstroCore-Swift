@@ -6,11 +6,13 @@ enum SiderealTime {
     /// Input: JD in UT.
     static func gmst(jdUT: Double) -> Double {
         let t = JulianDay.julianCenturiesUT(jd: jdUT)
+        let t2 = t * t
+        let t3 = t2 * t
         // Meeus Eq. 12.4
         let theta = 280.46061837
             + 360.98564736629 * (jdUT - JulianDay.j2000)
-            + 0.000387933 * t * t
-            - t * t * t / 38710000.0
+            + 0.000387933 * t2
+            - t3 / 38710000.0
         return AngleMath.normalized(degrees: theta)
     }
 
@@ -25,19 +27,5 @@ enum SiderealTime {
         // nutationLongitude is in arcseconds, convert to degrees
         let eqEq = (nutationLongitude / 3600.0) * TrigDeg.cos(trueObliquity)
         return AngleMath.normalized(degrees: gmstDeg + eqEq)
-    }
-
-    /// Local Apparent Sidereal Time in degrees.
-    /// longitude: east positive, in degrees.
-    static func last(
-        jdUT: Double, longitude: Double,
-        nutationLongitude: Double, trueObliquity: Double
-    ) -> Double {
-        let gastDeg = gast(
-            jdUT: jdUT,
-            nutationLongitude: nutationLongitude,
-            trueObliquity: trueObliquity
-        )
-        return AngleMath.normalized(degrees: gastDeg + longitude)
     }
 }

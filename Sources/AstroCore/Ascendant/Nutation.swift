@@ -12,36 +12,40 @@ enum Nutation {
     /// Compute nutation in longitude (Δψ) and obliquity (Δε).
     /// T: Julian centuries from J2000.0 in TT.
     static func compute(julianCenturiesTT t: Double) -> Result {
+        // Precompute powers of t
+        let t2 = t * t
+        let t3 = t2 * t
+
         // Fundamental arguments in degrees (Meeus Ch.22)
 
         // D: Mean elongation of the Moon from the Sun
         let d = AngleMath.normalized(degrees:
-            297.85036 + 445267.111480 * t - 0.0019142 * t * t
-            + t * t * t / 189474.0
+            297.85036 + 445267.111480 * t - 0.0019142 * t2
+            + t3 / 189474.0
         )
 
         // M: Mean anomaly of the Sun (Earth)
         let m = AngleMath.normalized(degrees:
-            357.52772 + 35999.050340 * t - 0.0001603 * t * t
-            - t * t * t / 300000.0
+            357.52772 + 35999.050340 * t - 0.0001603 * t2
+            - t3 / 300000.0
         )
 
         // M′: Mean anomaly of the Moon
         let mp = AngleMath.normalized(degrees:
-            134.96298 + 477198.867398 * t + 0.0086972 * t * t
-            + t * t * t / 56250.0
+            134.96298 + 477198.867398 * t + 0.0086972 * t2
+            + t3 / 56250.0
         )
 
         // F: Moon's argument of latitude
         let f = AngleMath.normalized(degrees:
-            93.27191 + 483202.017538 * t - 0.0036825 * t * t
-            + t * t * t / 327270.0
+            93.27191 + 483202.017538 * t - 0.0036825 * t2
+            + t3 / 327270.0
         )
 
         // Ω: Longitude of ascending node of Moon's orbit
         let omega = AngleMath.normalized(degrees:
-            125.04452 - 1934.136261 * t + 0.0020708 * t * t
-            + t * t * t / 450000.0
+            125.04452 - 1934.136261 * t + 0.0020708 * t2
+            + t3 / 450000.0
         )
 
         var deltaPsi: Double = 0

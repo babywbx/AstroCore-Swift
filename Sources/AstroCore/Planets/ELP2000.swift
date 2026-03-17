@@ -1,43 +1,48 @@
 import Foundation
 
 // Moon position — Meeus Ch.47
-// Truncated ELP-2000/82: 60 longitude terms + 60 latitude terms
+// Truncated ELP-2000/82: 59 longitude terms + 60 latitude terms
 enum ELP2000 {
     /// Compute geocentric ecliptic position of the Moon.
     /// t: Julian centuries from J2000.0 in TT
     static func compute(julianCenturiesTT t: Double) -> RawCelestialPosition {
+        // Precompute powers of t
+        let t2 = t * t
+        let t3 = t2 * t
+        let t4 = t3 * t
+
         // Mean longitude of the Moon (L′)
         let lp = AngleMath.normalized(degrees:
-            218.3164477 + 481267.88123421 * t - 0.0015786 * t * t
-            + t * t * t / 538841.0 - t * t * t * t / 65194000.0
+            218.3164477 + 481267.88123421 * t - 0.0015786 * t2
+            + t3 / 538841.0 - t4 / 65194000.0
         )
 
         // Mean elongation of the Moon (D)
         let d = AngleMath.normalized(degrees:
-            297.8501921 + 445267.1114034 * t - 0.0018819 * t * t
-            + t * t * t / 545868.0 - t * t * t * t / 113065000.0
+            297.8501921 + 445267.1114034 * t - 0.0018819 * t2
+            + t3 / 545868.0 - t4 / 113065000.0
         )
 
         // Sun's mean anomaly (M)
         let m = AngleMath.normalized(degrees:
-            357.5291092 + 35999.0502909 * t - 0.0001536 * t * t
-            + t * t * t / 24490000.0
+            357.5291092 + 35999.0502909 * t - 0.0001536 * t2
+            + t3 / 24490000.0
         )
 
         // Moon's mean anomaly (M′)
         let mp = AngleMath.normalized(degrees:
-            134.9633964 + 477198.8675055 * t + 0.0087414 * t * t
-            + t * t * t / 69699.0 - t * t * t * t / 14712000.0
+            134.9633964 + 477198.8675055 * t + 0.0087414 * t2
+            + t3 / 69699.0 - t4 / 14712000.0
         )
 
         // Moon's argument of latitude (F)
         let f = AngleMath.normalized(degrees:
-            93.2720950 + 483202.0175233 * t - 0.0036539 * t * t
-            - t * t * t / 3526000.0 + t * t * t * t / 863310000.0
+            93.2720950 + 483202.0175233 * t - 0.0036539 * t2
+            - t3 / 3526000.0 + t4 / 863310000.0
         )
 
         // Eccentricity correction factor
-        let e = 1.0 - 0.002516 * t - 0.0000074 * t * t
+        let e = 1.0 - 0.002516 * t - 0.0000074 * t2
         let e2 = e * e
 
         // Sum longitude and latitude terms
@@ -95,7 +100,7 @@ enum ELP2000 {
         )
     }
 
-    // Meeus Table 47.A — 60 longitude terms
+    // Meeus Table 47.A — 59 longitude terms (1 zero-coefficient term elided)
     private struct LonTerm {
         let d, m, mp, f: Int8
         let sinCoeff: Int32 // coefficient × 10⁶ (degrees → 0.000001°)
@@ -168,7 +173,6 @@ enum ELP2000 {
         LonTerm(d:  0, m:  2, mp:  1, f:  0, sinCoeff:     -323),
         LonTerm(d:  1, m:  1, mp: -1, f:  0, sinCoeff:      299),
         LonTerm(d:  2, m:  0, mp:  3, f:  0, sinCoeff:      294),
-        LonTerm(d:  2, m:  0, mp: -1, f: -2, sinCoeff:        0),
     ]
 
     private static let latitudeTerms: [LatTerm] = [
