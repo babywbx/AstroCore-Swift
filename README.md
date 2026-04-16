@@ -1,79 +1,125 @@
-# 🔭 AstroCore
+<div align="center"><a name="readme-top"></a>
 
-> **纯 Swift 实现的高精度西洋占星天文计算库，覆盖 1800–2100 年。**
+# AstroCore
 
-[![Swift 6.0](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](https://swift.org)
-[![Platforms](https://img.shields.io/badge/Platforms-iOS%20%7C%20macOS%20%7C%20tvOS%20%7C%20watchOS%20%7C%20visionOS-blue.svg)](https://github.com/wbx1-Ltd/AstroCore-Swift)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+A high-precision Western astrology computation library in pure Swift, covering 1800–2100.<br/>
+Sub-arcsecond accuracy for all bodies, zero dependencies, thread-safe.
 
-[English](README.en.md)
+[简体中文](./README.zh-CN.md) · [Report Issue][github-issues-link] · [Releases][github-release-link]
 
-**AstroCore** 从天文算法第一性原理出发，计算上升星座（ASC）、太阳/月亮/行星星座。基于 Jean Meeus《Astronomical Algorithms》实现完整的 VSOP87D 行星星历、ELP-2000/82 月球位置、IAU 1980 章动模型，精度经 JPL Horizons 验证达到角秒级别。
+<!-- SHIELD GROUP -->
 
----
+[![][github-stars-shield]][github-stars-link]
+[![][github-forks-shield]][github-forks-link]
+[![][github-issues-shield]][github-issues-link]
+[![][github-license-shield]][github-license-link]<br/>
+[![][github-contributors-shield]][github-contributors-link]
 
-## ✨ 特点
+</div>
 
-| | 功能 | 说明 |
-|-|------|------|
-| ♈ | **上升星座 (ASC)** | 基于恒星时 + 章动 + 真黄赤交角，支持全球坐标 |
-| ☀️ | **太阳星座** | VSOP87D + FK5 修正 + 光行差 + 章动 |
-| 🌙 | **月亮星座** | ELP-2000/82（120 项） + 章动修正 |
-| 🪐 | **行星星座** | 水金火木土五大行星，含光行时修正 |
-| 📊 | **批量本命盘** | 一次计算 ASC + 全部天体位置 |
-| 🌐 | **城市数据库** | 33,000+ 全球城市坐标与时区（精简英文版，可选模块） |
-| 🧵 | **线程安全** | 全面遵循 `Sendable` |
-| 🚫 | **零依赖** | 纯 Swift，无第三方库 |
-| ✅ | **精度验证** | 经 JPL Horizons 天文台数据验证 |
+<details>
+<summary><kbd>Table of Contents</kbd></summary>
 
----
+#### TOC
 
-## 📦 安装
+- [✨ Features](#-features)
+- [📦 Installation](#-installation)
+- [🚀 Usage](#-usage)
+  - [☀️ Sun Sign](#️-sun-sign)
+  - [🌙 Moon Sign](#-moon-sign)
+  - [🪐 Planet Positions](#-planet-positions)
+  - [♈ Ascendant (Rising Sign)](#-ascendant-rising-sign)
+  - [📊 Batch Natal Chart](#-batch-natal-chart)
+  - [🌐 City Database (Optional)](#-city-database-optional)
+  - [🔧 Low-Level API](#-low-level-api)
+- [🎯 Precision](#-precision)
+- [⚡ Performance](#-performance)
+- [🧪 Testing](#-testing)
+- [🗂️ API Reference](#️-api-reference)
+- [📋 Supported Range](#-supported-range)
+- [🔬 Algorithms](#-algorithms)
+- [📝 License](#-license)
+
+####
+
+<br/>
+
+</details>
+
+## ✨ Features
+
+> \[!IMPORTANT\]
+>
+> **Star Us** — you will receive all release notifications from GitHub without any delay \~ ⭐️
+
+| | Feature | Description |
+|-|---------|-------------|
+| ♈ | **Ascendant (ASC)** | Sidereal time + nutation + true obliquity, global coordinates |
+| ☀️ | **Sun Sign** | VSOP87D + FK5 correction + aberration + nutation |
+| 🌙 | **Moon Sign** | ELP-2000/82 (120 terms) + residual correction + nutation |
+| 🪐 | **Planet Signs** | Mercury through Saturn — light-time + FK5 + gravitational deflection + residual correction |
+| 📊 | **Batch Natal Chart** | Compute ASC + all body positions in one call |
+| 🌐 | **City Database** | 33,000+ global cities with coordinates & timezones (optional module) |
+| 🧵 | **Thread-Safe** | Full `Sendable` conformance |
+| 🚫 | **Zero Dependencies** | Pure Swift, no third-party libraries |
+| ✅ | **Sub-Arcsecond** | All bodies verified < 1″ against JPL Horizons (DE440/441) |
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 📦 Installation
 
 ### Swift Package Manager
 
-在 `Package.swift` 中添加：
+Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wbx1-Ltd/AstroCore-Swift.git", from: "1.1.0"),
+    .package(url: "https://github.com/wbx1-Ltd/AstroCore-Swift.git", from: "1.2.0"),
 ]
 ```
 
-然后在 target 中添加依赖：
+Then add as a target dependency:
 
 ```swift
 .target(
     name: "YourTarget",
     dependencies: [
-        "AstroCore",              // ~1.7 MB — 核心天文计算
-        "AstroCoreLocations",     // 在 AstroCore 基础上额外约 +2 MB（合计约 ~3.7 MB）
+        "AstroCore",              // ~1.7 MB — core computation
+        "AstroCoreLocations",     // +2 MB on top (~3.7 MB total)
     ]
 ),
 ```
 
-如果你的 App 已有城市/坐标数据，可以只引入核心模块：
+If your app already has city/coordinate data, import only the core:
 
 ```swift
 .target(
     name: "YourTarget",
-    dependencies: ["AstroCore"]  // 只需 ~1.7 MB
+    dependencies: ["AstroCore"]  // only ~1.7 MB
 ),
 ```
 
-或在 Xcode 中：**文件 → 添加包依赖…** → 粘贴上方 URL。
+Or in Xcode: **File → Add Package Dependencies…** → paste the URL above.
 
----
+<div align="right">
 
-## 🚀 使用
+[![][back-to-top]](#readme-top)
 
-`AstroCore` 只需要坐标 (`GeoCoordinate`) 和时区 (`timeZoneIdentifier`) 即可完成所有天文计算，不依赖任何城市数据。
+</div>
+
+## 🚀 Usage
+
+`AstroCore` only requires coordinates (`GeoCoordinate`) and a timezone (`timeZoneIdentifier`) — no city data needed.
 
 ```swift
 import AstroCore
 ```
 
-### ☀️ 太阳星座
+### ☀️ Sun Sign
 
 ```swift
 let moment = try CivilMoment(
@@ -83,11 +129,11 @@ let moment = try CivilMoment(
 let sun = AstroCalculator.sunPosition(for: moment)
 print(sun.sign.name)        // "Cancer"
 print(sun.sign.emoji)       // "♋"
-print(sun.longitude)        // 90.406° (夏至)
+print(sun.longitude)        // 90.406° (summer solstice)
 print(sun.degreeInSign)     // 0.406°
 ```
 
-### 🌙 月亮星座
+### 🌙 Moon Sign
 
 ```swift
 let moment = try CivilMoment(
@@ -97,10 +143,10 @@ let moment = try CivilMoment(
 let moon = AstroCalculator.moonPosition(for: moment)
 print(moon.sign.name)       // "Scorpio"
 print(moon.sign.emoji)      // "♏"
-print(moon.latitude)        // 5.17° (黄纬)
+print(moon.latitude)        // 5.17° (ecliptic latitude)
 ```
 
-### 🪐 行星位置
+### 🪐 Planet Positions
 
 ```swift
 let moment = try CivilMoment(
@@ -108,14 +154,14 @@ let moment = try CivilMoment(
     timeZoneIdentifier: "UTC"
 )
 
-// 单颗行星
+// Single planet
 let venus = AstroCalculator.planetPosition(.venus, for: moment)
 print("\(venus.sign.emoji) Venus in \(venus.sign.name)")  // "♐ Venus in Sagittarius"
 
-// 支持的天体：.sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn
+// Supported bodies: .sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn
 ```
 
-### ♈ 上升星座 (ASC)
+### ♈ Ascendant (Rising Sign)
 
 ```swift
 let moment = try CivilMoment(
@@ -129,7 +175,7 @@ print(asc.eclipticLongitude)     // 240.93°
 print(asc.degreeInSign)          // 0.93°
 ```
 
-### 📊 批量本命盘
+### 📊 Batch Natal Chart
 
 ```swift
 let moment = try CivilMoment(
@@ -145,23 +191,23 @@ let natal = try AstroCalculator.natalPositions(
     includeAscendant: true
 )
 
-// 上升星座
+// Ascendant
 print("ASC: \(natal.ascendant!.sign.emoji) \(natal.ascendant!.sign.name)")
 
-// 遍历所有天体
+// All body positions
 for (body, pos) in natal.bodies {
     print("\(pos.sign.emoji) \(body) in \(pos.sign.name) \(pos.degreeInSign)°")
 }
 ```
 
-### 🌐 城市数据库（可选）
+### 🌐 City Database (Optional)
 
 ```swift
 import AstroCoreLocations
 
 let cities = CityIndex.shared
 
-// 搜索城市
+// Search cities
 let results = cities.search("Tokyo", limit: 5)
 for city in results {
     print("\(city.name), \(city.countryCode)")  // "Tokyo, JP"
@@ -169,21 +215,21 @@ for city in results {
     print("  \(city.timeZoneIdentifier)")       // "Asia/Tokyo"
 }
 
-// 直接获取 GeoCoordinate 用于计算
+// Use GeoCoordinate directly for calculations
 let tokyo = results.first!
 let asc = try AstroCalculator.ascendant(for: moment, coordinate: tokyo.coordinate)
 ```
 
-### 🔧 底层 API
+### 🔧 Low-Level API
 
 ```swift
-// 儒略日
+// Julian Day
 let jd = AstroCalculator.julianDayUT(for: moment)
 
-// 地方恒星时（度）
+// Local Apparent Sidereal Time (degrees)
 let lst = AstroCalculator.localSiderealTimeDegrees(for: moment, longitude: 139.65)
 
-// 黄道十二宫
+// Zodiac signs
 let sign = ZodiacSign.leo
 print(sign.name)           // "Leo"
 print(sign.emoji)          // "♌"
@@ -191,90 +237,155 @@ print(sign.startLongitude) // 120.0
 print(sign.contains(longitude: 135.0))  // true
 ```
 
----
+<div align="right">
 
-## 🎯 精度
+[![][back-to-top]](#readme-top)
 
-经 **JPL Horizons**（DE440/441 星历）验证，2000-01-01 12:00 UTC 各天体视黄经误差：
+</div>
 
-| | 天体 | JPL Horizons | AstroCore | 误差 |
-|-|------|-------------|-----------|------|
-| ☀️ | 太阳 | 280.3689° | 280.369° | **0.36″** |
-| 🌙 | 月亮 | 223.3238° | 223.324° | **0.73″** |
-| ☿ | 水星 | 271.8893° | 271.895° | **20.6″** |
-| ♀️ | 金星 | 241.5658° | 241.570° | **15.2″** |
-| ♂️ | 火星 | 327.9633° | 327.967° | **13.3″** |
-| ♃ | 木星 | 25.2531° | 25.252° | **3.9″** |
-| ♄ | 土星 | 40.3956° | 40.393° | **9.5″** |
+## 🎯 Precision
 
-> 全部天体误差 < 1 角分。太阳和月亮精度优于 1 角秒。
+Verified against **JPL Horizons** (DE440/441) at 2000-01-01 12:00 UTC, apparent ecliptic longitude:
 
-### 🧪 测试覆盖
+| | Body | JPL Horizons | AstroCore | Error |
+|-|------|-------------|-----------|-------|
+| ☀️ | Sun | 280.3689° | 280.3689° | **0.02″** |
+| 🌙 | Moon | 223.3238° | 223.3239° | **0.51″** |
+| ☿ | Mercury | 271.8893° | 271.8893° | **0.08″** |
+| ♀️ | Venus | 241.5658° | 241.5658° | **0.15″** |
+| ♂️ | Mars | 327.9633° | 327.9633° | **0.06″** |
+| ♃ | Jupiter | 25.2531° | 25.2531° | **0.14″** |
+| ♄ | Saturn | 40.3956° | 40.3956° | **0.04″** |
 
-| 指标 | 数值 |
-|------|------|
-| 测试函数 | **119** |
-| 测试套件 | **23** |
+> **All bodies < 1 arcsecond.**
 
-验证来源：
+Cross-validated across 750+ epochs spanning 1850–2100.
 
-- ✅ **JPL Horizons (DE440/441)** — 太阳/月亮/行星位置角秒级验证
-- ✅ **至日交叉验证** — 2000 夏至、2024 冬至误差 < 1.5″
-- ✅ **全球 8 城市上升星座** — 纽约、伦敦、东京、柏林等
-- ✅ **极端边界** — 年份边界(1800/2100)、极地纬度、星座交界
+<div align="right">
 
----
+[![][back-to-top]](#readme-top)
 
-## 🗂️ API 概览
+</div>
 
-### AstroCore（核心计算）
+## ⚡ Performance
 
-| 类型 | 说明 |
-|------|------|
-| `AstroCalculator` | 主入口 — 太阳/月亮/行星/上升星座/本命盘计算 |
-| `CivilMoment` | 民用时间（年月日时分秒 + IANA 时区） |
-| `GeoCoordinate` | 地理坐标（纬度/经度），含极端纬度验证 |
-| `CelestialBody` | 天体枚举（日、月、水、金、火、木、土） |
-| `ZodiacSign` | 黄道十二宫枚举（含名称、emoji、起始经度） |
-| `CelestialPosition` | 天体位置结果（黄经、黄纬、星座、度数） |
-| `AscendantResult` | 上升星座结果（黄经、星座、恒星时、黄赤交角） |
-| `NatalPositions` | 批量结果（上升 + 天体字典） |
-| `AstroError` | 类型化错误（坐标无效、年份越界、极端纬度等） |
+Release build, Apple Silicon (M-series):
 
-### AstroCoreLocations（可选城市数据）
+| Computation | Time |
+|-------------|------|
+| Ascendant | **0.03 µs** |
+| Moon position | **0.9 µs** |
+| Sun position | **9 µs** |
+| Single planet | **55–170 µs** |
+| Full natal chart (7 bodies + ASC) | **630 µs** |
 
-| 类型 | 说明 |
-|------|------|
-| `CityIndex` | 单例城市搜索引擎（search / city(forID:)） |
-| `CityRecord` | 城市记录（名称、国家代码、坐标、时区） |
+> Throughput: ~**1,600 charts/sec**.
 
----
+<div align="right">
 
-## 📋 支持范围
+[![][back-to-top]](#readme-top)
 
-| | 项目 | 范围 |
-|-|------|------|
-| 📆 | 年份 | 1800 — 2100（301 年） |
-| 🪐 | 天体 | 太阳、月亮、水星、金星、火星、木星、土星 |
-| 🖥️ | 平台 | iOS 15+ · macOS 12+ · tvOS 15+ · watchOS 8+ · visionOS 1+ |
+</div>
+
+## 🧪 Testing
+
+| Metric | Value |
+|--------|-------|
+| Test functions | **122** |
+| Test suites | **23** |
+
+Validation:
+
+- ✅ **JPL Horizons (DE440/441)** — multi-epoch sub-arcsecond verification, 1850–2100
+- ✅ **Solstice cross-validation** — 2000 summer & 2024 winter solstice error < 1.5″
+- ✅ **8 global cities** — NYC, London, Tokyo, Berlin, Sydney, Mumbai, LA, Helsinki
+- ✅ **Edge cases** — year boundaries (1800/2100), polar latitudes, sign boundaries
+- ✅ **Regression baselines** — automatic numerical drift detection (< 10⁻¹⁰°)
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 🗂️ API Reference
+
+### AstroCore (Core Computation)
+
+| Type | Description |
+|------|-------------|
+| `AstroCalculator` | Main entry — Sun/Moon/planet/ascendant/natal chart |
+| `CivilMoment` | Civil time (year/month/day/hour/minute/second + IANA timezone) |
+| `GeoCoordinate` | Geographic coordinate with extreme latitude validation |
+| `CelestialBody` | Body enum — `.sun`, `.moon`, `.mercury`, `.venus`, `.mars`, `.jupiter`, `.saturn` |
+| `ZodiacSign` | 12 zodiac signs with name, emoji, start longitude, `contains()` |
+| `CelestialPosition` | Body position (ecliptic longitude/latitude, sign, degree in sign) |
+| `AscendantResult` | Ascendant (ecliptic longitude, sign, sidereal time, obliquity) |
+| `NatalPositions` | Batch result (ascendant + body dictionary) |
+| `AstroError` | Typed errors (invalid coordinate, unsupported year, extreme latitude) |
+
+### AstroCoreLocations (Optional)
+
+| Type | Description |
+|------|-------------|
+| `CityIndex` | Singleton city search engine |
+| `CityRecord` | City record (name, country code, coordinate, timezone) |
+
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 📋 Supported Range
+
+| | Item | Range |
+|-|------|-------|
+| 📆 | Year range | 1800 — 2100 (301 years) |
+| 🪐 | Bodies | Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn |
+| 🖥️ | Platforms | iOS 15+ · macOS 12+ · tvOS 15+ · watchOS 8+ · visionOS 1+ |
 | 🔧 | Swift | 6.0+ |
 
----
+<div align="right">
 
-## 🔬 算法参考
+[![][back-to-top]](#readme-top)
 
-| 来源 | 用途 |
-|------|------|
-| **Jean Meeus, _Astronomical Algorithms_ (2nd Ed, 1998)** | 儒略日、ΔT、恒星时、章动、上升星座公式 |
-| **VSOP87D** (Bretagnon & Francou, 1988) | 行星日心黄道球坐标（完整级数） |
-| **ELP-2000/82** (Chapront-Touzé & Chapront, 1983) | 月球黄经/黄纬（120 项截断级数） |
-| **IAU 1980 章动模型** | 63 项章动黄经/黄赤交角修正 |
-| **Laskar (1986)** | 平黄赤交角 10 阶多项式 |
-| **Espenak & Meeus (2006)** | ΔT 分段多项式（1800–2100） |
-| **JPL Horizons (DE440/441)** | 验证数据集 |
+</div>
 
----
+## 🔬 Algorithms
 
-## 📄 许可
+| Source | Usage |
+|--------|-------|
+| **Jean Meeus, _Astronomical Algorithms_ (2nd Ed, 1998)** | Julian Day, ΔT, sidereal time, nutation, ascendant formulas |
+| **VSOP87D** (Bretagnon & Francou, 1988) | Heliocentric ecliptic coordinates (full series) |
+| **ELP-2000/82** (Chapront-Touzé & Chapront, 1983) | Lunar longitude/latitude (120-term truncated series) |
+| **IAU 1980 Nutation Model** | 63-term nutation in longitude/obliquity |
+| **Laskar (1986)** | Mean obliquity 10th-degree polynomial |
+| **Espenak & Meeus (2006)** | ΔT piecewise polynomials (1800–2100) |
 
-[MIT License](LICENSE) © 2026 [wbx1 Ltd.](https://github.com/wbx1-Ltd)
+<div align="right">
+
+[![][back-to-top]](#readme-top)
+
+</div>
+
+## 📝 License
+
+Copyright &copy; 2026-present [Babywbx][profile-link].<br/>
+This project is [MIT](./LICENSE) licensed.
+
+<!-- LINK GROUP -->
+
+[back-to-top]: https://img.shields.io/badge/-BACK_TO_TOP-151515?style=flat-square
+[github-contributors-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/graphs/contributors
+[github-contributors-shield]: https://img.shields.io/github/contributors/wbx1-Ltd/AstroCore-Swift?color=c4f042&labelColor=black&style=flat-square
+[github-forks-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/network/members
+[github-forks-shield]: https://img.shields.io/github/forks/wbx1-Ltd/AstroCore-Swift?color=8ae8ff&labelColor=black&style=flat-square
+[github-issues-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/issues
+[github-issues-shield]: https://img.shields.io/github/issues/wbx1-Ltd/AstroCore-Swift?color=ff80eb&labelColor=black&style=flat-square
+[github-license-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/blob/main/LICENSE
+[github-license-shield]: https://img.shields.io/github/license/wbx1-Ltd/AstroCore-Swift?color=white&labelColor=black&style=flat-square
+[github-release-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/releases
+[github-stars-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/stargazers
+[github-stars-shield]: https://img.shields.io/github/stars/wbx1-Ltd/AstroCore-Swift?color=ffcb47&labelColor=black&style=flat-square
+[profile-link]: https://github.com/babywbx
