@@ -3,8 +3,8 @@ import Testing
 @testable import AstroCore
 
 // Phase 4: Reference Data Validation Tests
-// Validates computed positions against known ephemeris values.
-// All times are UTC wall clock (not TT). Tolerances reflect VSOP87D/ELP2000 precision.
+// Validates computed positions against fixed regression values.
+// All times are UTC wall clock (not TT). Tolerances reflect current implementation precision.
 
 @Suite("Sun Position Validation")
 struct SunValidationTests {
@@ -91,14 +91,14 @@ struct MoonValidationTests {
 struct PlanetValidationTests {
     // All at 2000-01-01 12:00 UTC, geocentric apparent ecliptic longitude
 
-    // Mercury ≈ 271.90°
+    // Mercury ≈ 271.89°
     @Test func mercury_2000_01_01() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
         let pos = AstroCalculator.planetPosition(.mercury, for: moment)
-        #expect(abs(pos.longitude - 271.895) < 0.15)
+        #expect(abs(pos.longitude - 271.8893) < 0.02)
         #expect(pos.sign == .capricorn)
     }
 
@@ -109,18 +109,18 @@ struct PlanetValidationTests {
             timeZoneIdentifier: "UTC"
         )
         let pos = AstroCalculator.planetPosition(.venus, for: moment)
-        #expect(abs(pos.longitude - 241.570) < 0.15)
+        #expect(abs(pos.longitude - 241.5658) < 0.02)
         #expect(pos.sign == .sagittarius)
     }
 
-    // Mars ≈ 327.97°
+    // Mars ≈ 327.96°
     @Test func mars_2000_01_01() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
         let pos = AstroCalculator.planetPosition(.mars, for: moment)
-        #expect(abs(pos.longitude - 327.967) < 0.15)
+        #expect(abs(pos.longitude - 327.9633) < 0.02)
         #expect(pos.sign == .aquarius)
     }
 
@@ -131,18 +131,18 @@ struct PlanetValidationTests {
             timeZoneIdentifier: "UTC"
         )
         let pos = AstroCalculator.planetPosition(.jupiter, for: moment)
-        #expect(abs(pos.longitude - 25.252) < 0.15)
+        #expect(abs(pos.longitude - 25.2532) < 0.02)
         #expect(pos.sign == .aries)
     }
 
-    // Saturn ≈ 40.39°
+    // Saturn ≈ 40.40°
     @Test func saturn_2000_01_01() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
         let pos = AstroCalculator.planetPosition(.saturn, for: moment)
-        #expect(abs(pos.longitude - 40.393) < 0.15)
+        #expect(abs(pos.longitude - 40.3957) < 0.02)
         #expect(pos.sign == .taurus)
     }
 }

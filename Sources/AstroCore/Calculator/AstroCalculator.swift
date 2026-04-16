@@ -79,7 +79,7 @@ public enum AstroCalculator {
         let needsEarth = bodies.contains(.sun)
             || bodies.contains(where: { $0 != .sun && $0 != .moon })
         let earth = needsEarth ? VSOP87D.earthPosition(tau: tau) : nil
-        let earthRect = earth.map { PlanetaryPosition.rectangular(from: $0) }
+        let earthMotion = earth.map { PlanetaryPosition.earthMotion(tau: tau, earth: $0) }
 
         // Ascendant (reuse nutation)
         var ascResult: AscendantResult?
@@ -117,10 +117,11 @@ public enum AstroCalculator {
             case .moon:
                 raw = ELP2000.compute(julianCenturiesTT: t)
             case .mercury, .venus, .mars, .jupiter, .saturn:
-                let er = earthRect ?? PlanetaryPosition.rectangular(
-                    from: VSOP87D.earthPosition(tau: tau)
+                let motion = earthMotion ?? PlanetaryPosition.earthMotion(
+                    tau: tau,
+                    earth: VSOP87D.earthPosition(tau: tau)
                 )
-                raw = PlanetaryPosition.compute(body, tau: tau, earthRect: er)
+                raw = PlanetaryPosition.compute(body, tau: tau, earthMotion: motion)
             }
             positions[body] = applyingNutation(to: raw, nutationArcsec: nutationLongitude)
         }
