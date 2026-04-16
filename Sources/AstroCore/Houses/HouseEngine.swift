@@ -70,9 +70,12 @@ enum HouseEngine {
             EqualHouses.cuspsFromMidheaven(context: context)
         case .vehlow:
             EqualHouses.cuspsVehlow(context: context)
+        case .porphyry:
+            PorphyryHouses.cusps(context: context)
+        case .sripati:
+            SripatiHouses.cusps(context: context)
 
-        case .porphyry, .sripati,
-             .placidus, .koch, .alcabitius,
+        case .placidus, .koch, .alcabitius,
              .sunshineTreindl, .sunshineMakransky,
              .campanus, .regiomontanus, .morinus, .topocentric,
              .krusinski, .apc,
