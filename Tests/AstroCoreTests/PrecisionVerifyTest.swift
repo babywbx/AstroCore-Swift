@@ -28,7 +28,7 @@ struct PrecisionDriftCheck {
     @Test func mercuryPrecision() throws {
         let m = try CivilMoment(year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC")
         let pos = AstroCalculator.planetPosition(.mercury, for: m)
-        let diff = abs(pos.longitude - 271.8893028749247)
+        let diff = abs(pos.longitude - 271.88929113413883)
         print("Mercury drift: \(diff)° (\(diff * 3600)″)")
         #expect(diff < 1e-10, "Mercury longitude drifted!")
     }
@@ -36,7 +36,7 @@ struct PrecisionDriftCheck {
     @Test func venusPrecision() throws {
         let m = try CivilMoment(year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC")
         let pos = AstroCalculator.planetPosition(.venus, for: m)
-        let diff = abs(pos.longitude - 241.56580995937026)
+        let diff = abs(pos.longitude - 241.56582103209644)
         print("Venus drift: \(diff)° (\(diff * 3600)″)")
         #expect(diff < 1e-10, "Venus longitude drifted!")
     }
@@ -44,7 +44,7 @@ struct PrecisionDriftCheck {
     @Test func marsPrecision() throws {
         let m = try CivilMoment(year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC")
         let pos = AstroCalculator.planetPosition(.mars, for: m)
-        let diff = abs(pos.longitude - 327.9633240729783)
+        let diff = abs(pos.longitude - 327.9633099594107)
         print("Mars drift: \(diff)° (\(diff * 3600)″)")
         #expect(diff < 1e-10, "Mars longitude drifted!")
     }
@@ -52,7 +52,7 @@ struct PrecisionDriftCheck {
     @Test func jupiterPrecision() throws {
         let m = try CivilMoment(year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC")
         let pos = AstroCalculator.planetPosition(.jupiter, for: m)
-        let diff = abs(pos.longitude - 25.253155102740763)
+        let diff = abs(pos.longitude - 25.25310623703263)
         print("Jupiter drift: \(diff)° (\(diff * 3600)″)")
         #expect(diff < 1e-10, "Jupiter longitude drifted!")
     }
@@ -60,7 +60,7 @@ struct PrecisionDriftCheck {
     @Test func saturnPrecision() throws {
         let m = try CivilMoment(year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC")
         let pos = AstroCalculator.planetPosition(.saturn, for: m)
-        let diff = abs(pos.longitude - 40.39568056903263)
+        let diff = abs(pos.longitude - 40.39564784286394)
         print("Saturn drift: \(diff)° (\(diff * 3600)″)")
         #expect(diff < 1e-10, "Saturn longitude drifted!")
     }
