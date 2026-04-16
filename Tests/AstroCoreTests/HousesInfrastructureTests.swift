@@ -180,13 +180,15 @@ struct HouseEngineRoutingTests {
         )
         let coord = try GeoCoordinate(latitude: 0.0, longitude: 0.0)
         do {
+            // Any still-unimplemented system works; .carter is in the
+            // research backlog and won't be implemented in V1.
             _ = try AstroCalculator.houses(
-                for: moment, coordinate: coord, system: .placidus
+                for: moment, coordinate: coord, system: .carter
             )
             Issue.record("Expected .houseSystemNotYetImplemented")
         } catch {
             if case .houseSystemNotYetImplemented(let s) = error {
-                #expect(s == .placidus)
+                #expect(s == .carter)
             } else {
                 Issue.record("Unexpected error: \(error)")
             }

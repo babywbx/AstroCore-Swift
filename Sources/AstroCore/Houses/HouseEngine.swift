@@ -74,10 +74,18 @@ enum HouseEngine {
             PorphyryHouses.cusps(context: context)
         case .sripati:
             SripatiHouses.cusps(context: context)
+        case .placidus:
+            PlacidusHouses.cusps(context: context)
+        case .koch:
+            KochHouses.cusps(context: context)
+        case .regiomontanus:
+            RegiomontanusHouses.cusps(context: context)
+        case .campanus:
+            CampanusHouses.cusps(context: context)
 
-        case .placidus, .koch, .alcabitius,
+        case .alcabitius,
              .sunshineTreindl, .sunshineMakransky,
-             .campanus, .regiomontanus, .morinus, .topocentric,
+             .morinus, .topocentric,
              .krusinski, .apc,
              .horizontal, .meridian, .axialRotation, .carter,
              .pullenSD, .pullenSR:
