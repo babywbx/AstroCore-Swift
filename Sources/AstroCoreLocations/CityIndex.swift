@@ -56,7 +56,7 @@ public final class CityIndex: @unchecked Sendable {
         ensureLoaded()
         let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
             .lowercased()
-        guard !normalizedQuery.isEmpty else { return [] }
+        guard !normalizedQuery.isEmpty, limit > 0 else { return [] }
 
         let results = searchEntries.lazy.filter { entry in
             entry.normalizedName.contains(normalizedQuery)

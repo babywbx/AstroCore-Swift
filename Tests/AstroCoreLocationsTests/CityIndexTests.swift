@@ -33,6 +33,11 @@ struct CityIndexTests {
         #expect(losAngeles[0].name == "Los Angeles")
     }
 
+    @Test func searchRejectsNonPositiveLimitsWithoutCrashing() {
+        #expect(CityIndex.shared.search("Tokyo", limit: 0).isEmpty)
+        #expect(CityIndex.shared.search("Tokyo", limit: -1).isEmpty)
+    }
+
     @Test func searchCountryCodeFiltersByCountry() {
         let results = CityIndex.shared.search("JP", limit: 5)
         #expect(!results.isEmpty)
