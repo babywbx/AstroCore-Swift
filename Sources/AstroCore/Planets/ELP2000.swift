@@ -92,7 +92,7 @@ enum ELP2000 {
 
         let fittedCorrectionArcsec = longitudeResidualCorrectionArcsec(
             d: d, m: m, mp: mp, f: f
-        )
+        ) + MoonResiduals.correctionArcsec(t: t)
         let lonDeg = AngleMath.normalized(
             degrees: lp + sumL / 1_000_000.0 - fittedCorrectionArcsec / 3600.0
         )

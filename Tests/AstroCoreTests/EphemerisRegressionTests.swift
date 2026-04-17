@@ -53,7 +53,7 @@ struct EphemerisRegressionTests {
             timeZoneIdentifier: "UTC"
         )
         let baseline = AstroCalculator.moonPosition(for: baselineMoment)
-        #expect(abs(baseline.longitude - 223.32392850044735) < 0.000001)
+        #expect(abs(baseline.longitude - 223.32401040882044) < 0.000001)
         #expect(abs(baseline.latitude - 5.17) < 0.5)
         #expect(baseline.sign == .scorpio)
         #expect(baseline.body == .moon)
@@ -90,11 +90,11 @@ struct EphemerisRegressionTests {
             timeZoneIdentifier: "UTC"
         )
         let expectations: [(CelestialBody, Double, ZodiacSign)] = [
-            (.mercury, 271.88929113413883, .capricorn),
-            (.venus, 241.56582103209644, .sagittarius),
-            (.mars, 327.9633099594107, .aquarius),
-            (.jupiter, 25.25310623703263, .aries),
-            (.saturn, 40.39564784286394, .taurus),
+            (.mercury, 271.8892835562328, .capricorn),
+            (.venus, 241.56581962641636, .sagittarius),
+            (.mars, 327.9633109921631, .aquarius),
+            (.jupiter, 25.25310593667188, .aries),
+            (.saturn, 40.39564718958692, .taurus),
         ]
 
         for (body, expectedLongitude, expectedSign) in expectations {
@@ -126,7 +126,7 @@ struct EphemerisRegressionTests {
     }
 
     @Test func lightCorrectionsStayWithinExpectedBounds() {
-        let elongations = [1.0, 5.0, 10.0, 30.0, 45.0, 90.0, 120.0, 180.0]
+        let elongations = [1.0, 5.0, 10.0, 30.0, 45.0, 90.0, 120.0]
         for elongation in elongations {
             let deflection = PlanetaryPosition.gravitationalDeflectionArcsec(
                 elongationDeg: elongation
@@ -140,6 +140,9 @@ struct EphemerisRegressionTests {
         #expect(
             abs(PlanetaryPosition.gravitationalDeflectionArcsec(elongationDeg: 90.0) - 0.00407)
                 < 1e-6
+        )
+        #expect(
+            abs(PlanetaryPosition.gravitationalDeflectionArcsec(elongationDeg: 180.0)) < 1e-9
         )
         #expect(abs(PlanetaryPosition.fk5LongitudeCorrectionArcsec() - (-0.09033)) < 0.001)
         #expect(PlanetResiduals.correctionArcsec(for: .mercury, t: 0.0) != 0.0)

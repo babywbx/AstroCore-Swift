@@ -116,7 +116,7 @@ enum PlanetaryPosition {
     /// Gravitational light deflection by the Sun (Meeus p.178).
     static func gravitationalDeflectionArcsec(elongationDeg: Double) -> Double {
         guard elongationDeg >= 1.0 else { return 0.0 }
-        return 0.00407 / TrigDeg.sin(elongationDeg)
+        return 0.00407 * (1.0 + TrigDeg.cos(elongationDeg)) / TrigDeg.sin(elongationDeg)
     }
 
     @inline(__always)
