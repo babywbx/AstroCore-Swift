@@ -141,6 +141,21 @@ public enum AstroCalculator {
         )
     }
 
+    /// --- Derived coordinate frames (apparent, of date) ---
+
+    /// Apparent geocentric equatorial RA/Dec (of date) for any body, computed by
+    /// rotating the apparent ecliptic position by the true obliquity.
+    public static func equatorial(
+        of body: CelestialBody, at moment: CivilMoment
+    ) -> EquatorialCoordinate {
+        let position = planetPosition(body, for: moment)
+        return EquatorialCoordinate.from(
+            eclipticLongitudeDegrees: position.longitude,
+            latitudeDegrees: position.latitude,
+            trueObliquityDegrees: moment.trueObliquity
+        )
+    }
+
     /// --- Batch (neutral, no ascendant / zodiac) ---
     public static func positions(
         of bodies: Set<CelestialBody>,
