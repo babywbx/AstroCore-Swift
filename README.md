@@ -5,6 +5,9 @@
 A high-precision Western astrology computation library in pure Swift, covering 1800–2100.<br/>
 Sub-arcsecond accuracy for all bodies, zero dependencies, thread-safe.
 
+> v3 planning is in progress. This README still describes the stable 2.0.0 API;
+> see [docs/README.md](./docs/README.md) for design documents.
+
 [简体中文](./README.zh-CN.md) · [Report Issue][github-issues-link] · [Releases][github-release-link]
 
 <!-- SHIELD GROUP -->
@@ -64,7 +67,7 @@ Sub-arcsecond accuracy for all bodies, zero dependencies, thread-safe.
 | 🌐 | **City Database** | 33,000+ global cities with coordinates & timezones (optional module) |
 | 🧵 | **Thread-Safe** | Full `Sendable` conformance |
 | 🚫 | **Zero Dependencies** | Pure Swift, no third-party libraries |
-| ✅ | **Sub-Arcsecond** | All bodies verified < 1″ against JPL Horizons (DE440/441) |
+| ✅ | **Sub-Arcsecond** | All bodies verified < 1″ against a reference ephemeris |
 
 <div align="right">
 
@@ -311,9 +314,9 @@ print(sign.contains(longitude: 135.0))  // true
 
 ## 🎯 Precision
 
-Verified against **JPL Horizons** (DE440/441) at 2000-01-01 12:00 UTC, apparent ecliptic longitude:
+Verified against a reference ephemeris at 2000-01-01 12:00 UTC, apparent ecliptic longitude:
 
-| | Body | JPL Horizons | AstroCore | Error |
+| | Body | Reference | AstroCore | Error |
 |-|------|-------------|-----------|-------|
 | ☀️ | Sun | 280.3689° | 280.3689° | **0.02″** |
 | 🌙 | Moon | 223.3238° | 223.3239° | **0.51″** |
@@ -341,11 +344,12 @@ Release build, Apple Silicon (M-series):
 |-------------|------|
 | Ascendant | **0.03 µs** |
 | Moon position | **0.9 µs** |
-| Sun position | **9 µs** |
-| Single planet | **55–170 µs** |
-| Full natal chart (7 bodies + ASC + houses) | **630 µs** |
+| Sun position | **11 µs** |
+| Single planet | **57–204 µs** |
+| Full natal positions (7 bodies + ASC) | **662 µs** |
+| Motion-rich natal states (7 bodies + ASC) | **2.04 ms** |
 
-> Throughput: ~**1,600 charts/sec**.
+> Default chart throughput: ~**1,510 charts/sec**.
 
 <div align="right">
 
@@ -357,12 +361,12 @@ Release build, Apple Silicon (M-series):
 
 | Metric | Value |
 |--------|-------|
-| Test cases | **62** |
-| Test suites | **9** |
+| Test cases | **70** |
+| Test suites | **10** |
 
 Validation:
 
-- ✅ **JPL Horizons (DE440/441)** — multi-epoch sub-arcsecond verification, 1850–2100
+- ✅ **a reference ephemeris** — multi-epoch sub-arcsecond verification, 1850–2100
 - ✅ **Solstice cross-validation** — 2000 summer & 2024 winter solstice error < 1.5″
 - ✅ **8 global cities** — NYC, London, Tokyo, Berlin, Sydney, Mumbai, LA, Helsinki
 - ✅ **House systems** — 16 systems checked for cusp validity, angle alignment, and polar fallback behavior
@@ -388,9 +392,11 @@ Validation:
 | `GeoCoordinate` | Geographic coordinate with range-checked latitude and longitude |
 | `CelestialBody` | Body enum — `.sun`, `.moon`, `.mercury`, `.venus`, `.mars`, `.jupiter`, `.saturn` |
 | `ZodiacSign` | 12 zodiac signs with name, emoji, start longitude, `contains()` |
-| `CelestialPosition` | Body position (ecliptic longitude/latitude, sign, degree in sign) |
+| `CelestialPosition` | Lightweight body position (ecliptic longitude/latitude) |
+| `CelestialState` | Motion-rich body state (position + longitude speed/retrograde) |
 | `AscendantResult` | Ascendant (ecliptic longitude, sign, degree in sign, boundary flag) |
 | `NatalPositions` | Batch result (optional ascendant + body dictionary) |
+| `NatalStates` | Motion-rich batch result (optional ascendant + body state dictionary) |
 | `NatalChart` | Full chart payload (positions + houses + context) |
 | `HouseSystem` | 16 supported 12-house systems with display metadata |
 | `HouseResult` | Cusps + angles + requested/resolved system metadata |
@@ -435,13 +441,13 @@ Validation:
 
 | Source | Usage |
 |--------|-------|
-| **Jean Meeus, _Astronomical Algorithms_ (2nd Ed, 1998)** | Julian Day, ΔT, sidereal time, nutation, ascendant formulas |
-| **VSOP87D** (Bretagnon & Francou, 1988) | Heliocentric ecliptic coordinates (full series) |
+| **Standard astronomical algorithms** | Julian Day, ΔT, sidereal time, nutation, ascendant formulas |
+| **VSOP87D** | Heliocentric ecliptic coordinates (full series) |
 | **ELP-2000/82** (Chapront-Touzé & Chapront, 1983) | Lunar longitude/latitude (120-term truncated series) |
 | **Classical house-system geometry** | Equal, Whole Sign, Porphyry, Sripati, semi-arc, and great-circle house constructions |
 | **IAU 1980 Nutation Model** | 63-term nutation in longitude/obliquity |
 | **Laskar (1986)** | Mean obliquity 10th-degree polynomial |
-| **Espenak & Meeus (2006)** | ΔT piecewise polynomials (1800–2100) |
+| **Standard ΔT model (2006)** | ΔT piecewise polynomials (1800–2100) |
 
 <div align="right">
 

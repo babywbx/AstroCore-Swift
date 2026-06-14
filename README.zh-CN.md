@@ -5,6 +5,9 @@
 纯 Swift 实现的高精度西洋占星天文计算库，覆盖 1800–2100 年。<br/>
 全部天体误差 < 1 角秒，零依赖，线程安全。
 
+> v3 重构规划正在整理中。当前 README 仍描述 2.0.0 稳定能力;设计文档见
+> [docs/README.md](./docs/README.md)。
+
 [English](./README.md) · [报告问题][github-issues-link] · [更新日志][github-release-link]
 
 <!-- SHIELD GROUP -->
@@ -64,7 +67,7 @@
 | 🌐 | **城市数据库** | 33,000+ 全球城市坐标与时区（可选模块） |
 | 🧵 | **线程安全** | 全面遵循 `Sendable` |
 | 🚫 | **零依赖** | 纯 Swift，无第三方库 |
-| ✅ | **亚角秒精度** | 全部天体经 JPL Horizons (DE440/441) 验证误差 < 1″ |
+| ✅ | **亚角秒精度** | 全部天体经 a reference ephemeris 验证误差 < 1″ |
 
 <div align="right">
 
@@ -310,9 +313,9 @@ print(sign.contains(longitude: 135.0))  // true
 
 ## 🎯 精度
 
-经 **JPL Horizons**（DE440/441 星历）验证，2000-01-01 12:00 UTC 各天体视黄经误差：
+经 **a reference ephemeris**（a reference ephemeris 星历）验证，2000-01-01 12:00 UTC 各天体视黄经误差：
 
-| | 天体 | JPL Horizons | AstroCore | 误差 |
+| | 天体 | Reference | AstroCore | 误差 |
 |-|------|-------------|-----------|------|
 | ☀️ | 太阳 | 280.3689° | 280.3689° | **0.02″** |
 | 🌙 | 月亮 | 223.3238° | 223.3239° | **0.51″** |
@@ -340,11 +343,12 @@ Release 模式，Apple Silicon（M-series）：
 |--------|------|
 | 上升星座 | **0.03 µs** |
 | 月亮位置 | **0.9 µs** |
-| 太阳位置 | **9 µs** |
-| 单颗行星 | **55–170 µs** |
-| 完整星盘（7 天体 + ASC + 宫位） | **630 µs** |
+| 太阳位置 | **11 µs** |
+| 单颗行星 | **57–204 µs** |
+| 完整基础位置（7 天体 + ASC） | **662 µs** |
+| 运动状态星盘（7 天体 + ASC） | **2.04 ms** |
 
-> 吞吐量约 **1,600 张星盘/秒**。
+> 默认基础位置吞吐量约 **1,510 张星盘/秒**。
 
 <div align="right">
 
@@ -356,12 +360,12 @@ Release 模式，Apple Silicon（M-series）：
 
 | 指标 | 数值 |
 |------|------|
-| 测试用例 | **62** |
-| 测试套件 | **9** |
+| 测试用例 | **70** |
+| 测试套件 | **10** |
 
 验证方式：
 
-- ✅ **JPL Horizons (DE440/441)** — 1850–2100 多历元亚角秒级验证
+- ✅ **a reference ephemeris** — 1850–2100 多历元亚角秒级验证
 - ✅ **至日交叉验证** — 2000 夏至、2024 冬至误差 < 1.5″
 - ✅ **全球 8 城市** — 纽约、伦敦、东京、柏林、悉尼、孟买、洛杉矶、赫尔辛基
 - ✅ **宫位系统** — 16 种系统覆盖宫头有效性、四轴对齐与高纬 fallback
@@ -387,9 +391,11 @@ Release 模式，Apple Silicon（M-series）：
 | `GeoCoordinate` | 地理坐标（纬度/经度范围校验） |
 | `CelestialBody` | 天体枚举 — `.sun`, `.moon`, `.mercury`, `.venus`, `.mars`, `.jupiter`, `.saturn` |
 | `ZodiacSign` | 黄道十二宫（名称、emoji、起始经度、`contains()`） |
-| `CelestialPosition` | 天体位置（黄经、黄纬、星座、度数） |
+| `CelestialPosition` | 轻量天体位置（黄经、黄纬） |
+| `CelestialState` | 运动状态天体（位置 + 黄经速度/逆行） |
 | `AscendantResult` | 上升星座结果（黄经、星座、星座内度数、边界标记） |
 | `NatalPositions` | 批量结果（可选 ASC + 天体字典） |
+| `NatalStates` | 运动状态批量结果（可选 ASC + 天体状态字典） |
 | `NatalChart` | 完整星盘结果（positions + houses + context） |
 | `HouseSystem` | 16 种十二宫系统及其显示元数据 |
 | `HouseResult` | 宫头、四轴、请求/实际系统等结果集合 |
@@ -434,13 +440,13 @@ Release 模式，Apple Silicon（M-series）：
 
 | 来源 | 用途 |
 |------|------|
-| **Jean Meeus, _Astronomical Algorithms_ (2nd Ed, 1998)** | 儒略日、ΔT、恒星时、章动、上升星座公式 |
-| **VSOP87D** (Bretagnon & Francou, 1988) | 行星日心黄道球坐标（完整级数） |
+| **Standard astronomical algorithms** | 儒略日、ΔT、恒星时、章动、上升星座公式 |
+| **VSOP87D** | 行星日心黄道球坐标（完整级数） |
 | **ELP-2000/82** (Chapront-Touzé & Chapront, 1983) | 月球黄经/黄纬（120 项截断级数） |
 | **传统宫位几何方法** | Equal、Whole Sign、Porphyry、Sripati、semi-arc、great-circle 等宫位构造 |
 | **IAU 1980 章动模型** | 63 项章动黄经/黄赤交角修正 |
 | **Laskar (1986)** | 平黄赤交角 10 阶多项式 |
-| **Espenak & Meeus (2006)** | ΔT 分段多项式（1800–2100） |
+| **Standard ΔT model (2006)** | ΔT 分段多项式（1800–2100） |
 
 <div align="right">
 
