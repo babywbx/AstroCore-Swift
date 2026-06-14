@@ -3,7 +3,7 @@ import Foundation
 
 /// Campanus houses: 12 equal divisions of the prime vertical (the great circle
 /// through east, zenith, west, nadir). House-circles share the same N-S horizon
-/// poles as Regiomontanus — only the reference great circle differs.
+/// poles as Regiomontanus; only the base great circle differs.
 ///
 /// Parameterize the prime vertical by M, measured from the east horizon point
 /// toward the zenith:

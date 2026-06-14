@@ -66,8 +66,8 @@ Sub-arcsecond accuracy for all bodies, zero dependencies, thread-safe.
 | 📊 | **Batch Natal Chart** | Compute planets, ASC, houses, and angles in one call |
 | 🌐 | **City Database** | 33,000+ global cities with coordinates & timezones (optional module) |
 | 🧵 | **Thread-Safe** | Full `Sendable` conformance |
-| 🚫 | **Zero Dependencies** | Pure Swift, no third-party libraries |
-| ✅ | **Sub-Arcsecond** | All bodies verified < 1″ against a reference ephemeris |
+| 🚫 | **Zero Dependencies** | Pure Swift, no external runtime dependencies |
+| ✅ | **Sub-Arcsecond** | All primary bodies verified < 1″ against local validation baselines |
 
 <div align="right">
 
@@ -314,9 +314,9 @@ print(sign.contains(longitude: 135.0))  // true
 
 ## 🎯 Precision
 
-Verified against a reference ephemeris at 2000-01-01 12:00 UTC, apparent ecliptic longitude:
+Validated at 2000-01-01 12:00 UTC, apparent ecliptic longitude:
 
-| | Body | Reference | AstroCore | Error |
+| | Body | Baseline | AstroCore | Error |
 |-|------|-------------|-----------|-------|
 | ☀️ | Sun | 280.3689° | 280.3689° | **0.02″** |
 | 🌙 | Moon | 223.3238° | 223.3239° | **0.51″** |
@@ -342,14 +342,14 @@ Release build, Apple Silicon (M-series):
 
 | Computation | Time |
 |-------------|------|
-| Ascendant | **0.03 µs** |
-| Moon position | **0.9 µs** |
-| Sun position | **11 µs** |
-| Single planet | **57–204 µs** |
-| Full natal positions (7 bodies + ASC) | **662 µs** |
-| Motion-rich natal states (7 bodies + ASC) | **2.04 ms** |
+| Ascendant | **0.035 µs** |
+| Moon position | **1.1 µs** |
+| Sun position | **9.5 µs** |
+| Single planet | **37.5–171.5 µs** |
+| Full natal positions (7 bodies + ASC) | **648.7 µs** |
+| Motion-rich natal states (7 bodies + ASC) | **1.98 ms** |
 
-> Default chart throughput: ~**1,510 charts/sec**.
+> Default chart throughput: ~**1,542 charts/sec**.
 
 <div align="right">
 
@@ -361,12 +361,12 @@ Release build, Apple Silicon (M-series):
 
 | Metric | Value |
 |--------|-------|
-| Test cases | **70** |
-| Test suites | **10** |
+| Test cases | **79** |
+| Test suites | **14** |
 
 Validation:
 
-- ✅ **a reference ephemeris** — multi-epoch sub-arcsecond verification, 1850–2100
+- ✅ **Local validation baselines** — multi-epoch sub-arcsecond verification, 1850–2100
 - ✅ **Solstice cross-validation** — 2000 summer & 2024 winter solstice error < 1.5″
 - ✅ **8 global cities** — NYC, London, Tokyo, Berlin, Sydney, Mumbai, LA, Helsinki
 - ✅ **House systems** — 16 systems checked for cusp validity, angle alignment, and polar fallback behavior
@@ -460,11 +460,8 @@ Validation:
 Copyright &copy; 2026-present [Babywbx][profile-link].<br/>
 This project is [MIT](./LICENSE) licensed.
 
-`AstroCoreLocations` bundles derived city data generated from GeoNames `cities15000`.
-GeoNames states that its downloadable geographical database is available under CC BY 4.0,
-so if you redistribute or surface this packaged dataset, review the attribution terms:
-[GeoNames export](https://download.geonames.org/export/dump/) and
-[GeoNames about/license](https://www.geonames.org/about.html).
+`AstroCoreLocations` bundles derived city data. If you redistribute or surface the
+packaged dataset, review the attribution requirements before release.
 
 <!-- LINK GROUP -->
 

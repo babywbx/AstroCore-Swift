@@ -2,7 +2,7 @@ import AstroCore
 import Foundation
 
 /// Porphyry houses: trisect each ecliptic quadrant between the four angles.
-/// Oldest quadrant system (3rd century CE Porphyry of Tyre). Produces houses
+/// Classical quadrant system. Produces houses
 /// of varying sizes at non-equatorial latitudes but needs only the angles —
 /// no semi-arc math.
 enum PorphyryHouses {
