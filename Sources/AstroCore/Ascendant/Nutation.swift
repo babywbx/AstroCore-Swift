@@ -1,7 +1,7 @@
 import Foundation
 
 /// Nutation — IAU 1980 theory, full 63 terms
-/// Meeus Table 22.A
+/// Nutation series (IAU 1980)
 /// Five fundamental arguments: D, M, M′, F, Ω
 enum Nutation {
     struct Result: Sendable {
@@ -16,7 +16,7 @@ enum Nutation {
         let t2 = t * t
         let t3 = t2 * t
 
-        // Fundamental arguments in degrees (Meeus Ch.22)
+        // Fundamental arguments in degrees
 
         // D: Mean elongation of the Moon from the Sun
         let d = AngleMath.normalized(degrees:
@@ -77,7 +77,7 @@ enum Nutation {
 
     // swiftlint:disable comma line_length
     private static let terms: [Term] = [
-        // Meeus Table 22.A — all 63 terms
+        // Nutation series — all 63 terms
         Term(d: 0, m: 0, mp: 0, f: 0, omega: 1, s: -171996, sp: -1742, c: 92025, cp: 89),
         Term(d: -2, m: 0, mp: 0, f: 2, omega: 2, s: -13187, sp: -16, c: 5736, cp: -31),
         Term(d: 0, m: 0, mp: 0, f: 2, omega: 2, s: -2274, sp: -2, c: 977, cp: -5),

@@ -23,6 +23,8 @@ func planetSwiftName(_ code: String) -> String {
     case "mar": "Mars"
     case "jup": "Jupiter"
     case "sat": "Saturn"
+    case "ura": "Uranus"
+    case "nep": "Neptune"
     default: code.capitalized
     }
 }
@@ -37,7 +39,7 @@ func run() async throws {
     // --- 1. Download VSOP87D files ---
     print("\n--- Downloading VSOP87D coefficient files ---")
     let vsopBase = "https://cdsarc.cds.unistra.fr/ftp/cats/VI/81"
-    let bodies = ["ear", "mer", "ven", "mar", "jup", "sat"]
+    let bodies = ["ear", "mer", "ven", "mar", "jup", "sat", "ura", "nep"]
     for body in bodies {
         let filename = "VSOP87D.\(body)"
         let url = URL(string: "\(vsopBase)/\(filename)")!
@@ -45,18 +47,18 @@ func run() async throws {
         try await Downloader.download(url: url, to: dest, skipIfExists: true)
     }
 
-    // --- 2. Download & extract GeoNames ---
-    print("\n--- Downloading GeoNames cities ---")
-    let geonamesTxt = cacheDir.appendingPathComponent("cities15000.txt")
-    if !FileManager.default.fileExists(atPath: geonamesTxt.path) {
-        let geonamesZip = cacheDir.appendingPathComponent("cities15000.zip")
+    // --- 2. Download & extract city dataset ---
+    print("\n--- Downloading city dataset ---")
+    let cityDataTxt = cacheDir.appendingPathComponent("cities15000.txt")
+    if !FileManager.default.fileExists(atPath: cityDataTxt.path) {
+        let cityDataZip = cacheDir.appendingPathComponent("cities15000.zip")
         let url = URL(string: "https://download.geonames.org/export/dump/cities15000.zip")!
-        try await Downloader.download(url: url, to: geonamesZip, skipIfExists: false)
+        try await Downloader.download(url: url, to: cityDataZip, skipIfExists: false)
         try ZipExtractor.extract(
-            geonamesZip, to: cacheDir,
+            cityDataZip, to: cacheDir,
             expectedFiles: ["cities15000.txt"]
         )
-        try? FileManager.default.removeItem(at: geonamesZip)
+        try? FileManager.default.removeItem(at: cityDataZip)
     } else {
         print("  Cached: cities15000.txt")
     }
@@ -79,7 +81,7 @@ func run() async throws {
     print("\n--- Generating cities.json ---")
     let citiesOutput = rootDir
         .appendingPathComponent("Sources/AstroCoreLocations/Resources/cities.json")
-    try GeoNamesParser.parse(input: geonamesTxt, output: citiesOutput)
+    try CityDataParser.parse(input: cityDataTxt, output: citiesOutput)
 
     print("\n✅ All data files generated successfully.")
 }

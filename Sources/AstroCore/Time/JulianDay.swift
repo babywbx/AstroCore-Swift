@@ -1,12 +1,12 @@
 import Foundation
 
-/// Meeus Ch.7 — Julian Day Number
+/// Julian Day Number
 enum JulianDay {
     /// J2000.0 epoch: 2000-01-01 12:00 TT = JD 2451545.0
     static let j2000: Double = 2451545.0
 
     /// Compute JD_UT from UTC date components.
-    /// Meeus formula valid for Gregorian calendar (after 1582-10-15).
+    /// Valid for Gregorian calendar (after 1582-10-15).
     static func julianDay(
         year: Int, month: Int, dayFraction: Double
     ) -> Double {

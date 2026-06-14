@@ -62,6 +62,16 @@ enum VSOP87D {
         b: [Saturn.B0, Saturn.B1, Saturn.B2, Saturn.B3, Saturn.B4, Saturn.B5],
         r: [Saturn.R0, Saturn.R1, Saturn.R2, Saturn.R3, Saturn.R4, Saturn.R5]
     )
+    private static let uranusSeries: SeriesBundle = (
+        l: [Uranus.L0, Uranus.L1, Uranus.L2, Uranus.L3, Uranus.L4, Uranus.L5],
+        b: [Uranus.B0, Uranus.B1, Uranus.B2, Uranus.B3, Uranus.B4],
+        r: [Uranus.R0, Uranus.R1, Uranus.R2, Uranus.R3, Uranus.R4]
+    )
+    private static let neptuneSeries: SeriesBundle = (
+        l: [Neptune.L0, Neptune.L1, Neptune.L2, Neptune.L3, Neptune.L4, Neptune.L5],
+        b: [Neptune.B0, Neptune.B1, Neptune.B2, Neptune.B3, Neptune.B4, Neptune.B5],
+        r: [Neptune.R0, Neptune.R1, Neptune.R2, Neptune.R3, Neptune.R4]
+    )
 
     /// Compute heliocentric position for Earth.
     @inline(__always)
@@ -81,6 +91,8 @@ enum VSOP87D {
         case .mars: marsSeries
         case .jupiter: jupiterSeries
         case .saturn: saturnSeries
+        case .uranus: uranusSeries
+        case .neptune: neptuneSeries
         case .sun, .moon:
             fatalError("Use SolarPosition/ELP2000 for \(body)")
         }

@@ -1,7 +1,7 @@
 import Foundation
 
-/// Empirical Moon longitude residual correction fitted against JPL Horizons on a
-/// semi-monthly 1900-2050 grid.
+/// Empirical Moon longitude residual correction fitted against a reference ephemeris
+/// on a semi-monthly 1900-2050 grid.
 ///
 /// The base ELP2000 implementation remains the primary model; these terms only
 /// remove the remaining few-arcsecond hotspots without materially changing the

@@ -153,11 +153,11 @@ public struct CivilMoment: Sendable, Hashable, Codable {
     var julianCenturiesTT: Double { cachedJulianCenturiesTT }
     var julianMillenniaTT: Double { cachedJulianMillenniaTT }
     var nutationLongitude: Double { cachedNutationLongitude }
-    var trueObliquity: Double { cachedTrueObliquity }
+    public var trueObliquity: Double { cachedTrueObliquity }
     var greenwichApparentSiderealTime: Double { cachedGreenwichApparentSiderealTime }
 
     @inline(__always)
-    func localApparentSiderealTime(longitude: Double) -> Double {
+    public func localApparentSiderealTime(longitude: Double) -> Double {
         AngleMath.normalized(degrees: cachedGreenwichApparentSiderealTime + longitude)
     }
 

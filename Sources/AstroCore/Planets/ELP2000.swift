@@ -1,6 +1,6 @@
 import Foundation
 
-/// Moon position — Meeus Ch.47
+/// Moon position
 /// Truncated ELP-2000/82: 59 longitude terms + 60 latitude terms
 enum ELP2000 {
     /// Compute geocentric ecliptic position of the Moon.
@@ -75,7 +75,7 @@ enum ELP2000 {
             sumB += coeff * TrigDeg.sin(arg)
         }
 
-        // Additional corrections (Meeus p.342)
+        // Additional corrections
         let a1 = AngleMath.normalized(degrees: 119.75 + 131.849 * t)
         let a2 = AngleMath.normalized(degrees: 53.09 + 479264.290 * t)
         let a3 = AngleMath.normalized(degrees: 313.45 + 481266.484 * t)
@@ -106,13 +106,13 @@ enum ELP2000 {
         )
     }
 
-    /// Meeus Table 47.A — 59 longitude terms (1 zero-coefficient term elided)
+    /// Longitude terms — 59 (1 zero-coefficient term elided)
     private struct LonTerm {
         let d, m, mp, f: Int8
         let sinCoeff: Int32 // coefficient × 10⁶ (degrees → 0.000001°)
     }
 
-    /// Meeus Table 47.B — 60 latitude terms
+    /// Latitude terms — 60
     private struct LatTerm {
         let d, m, mp, f: Int8
         let sinCoeff: Int32

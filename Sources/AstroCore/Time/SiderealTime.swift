@@ -1,6 +1,6 @@
 import Foundation
 
-/// Sidereal Time — Meeus Ch.12
+/// Sidereal Time
 enum SiderealTime {
     /// Greenwich Mean Sidereal Time in degrees.
     /// Input: JD in UT.
@@ -8,7 +8,7 @@ enum SiderealTime {
         let t = JulianDay.julianCenturiesUT(jd: jdUT)
         let t2 = t * t
         let t3 = t2 * t
-        // Meeus Eq. 12.4
+        // mean sidereal time at Greenwich
         let theta = 280.46061837
             + 360.98564736629 * (jdUT - JulianDay.j2000)
             + 0.000387933 * t2

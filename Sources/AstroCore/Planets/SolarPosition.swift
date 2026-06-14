@@ -17,7 +17,7 @@ enum SolarPosition {
         var sunLon = earth.longitude + .pi
         let sunLat = -earth.latitude
 
-        // FK5 correction (Meeus p.166)
+        // FK5 correction
         let lp = AngleMath.toDegrees(sunLon) - 1.397 * t - 0.00031 * t * t
         let fk5Lon = -0.09033 / 3600.0 // degrees
         let lpTrig = TrigDeg.sincos(lp)
@@ -25,7 +25,7 @@ enum SolarPosition {
         sunLon += AngleMath.toRadians(fk5Lon)
         let corrLat = sunLat + AngleMath.toRadians(fk5Lat)
 
-        // Aberration: −20.4898″ / R (Meeus Eq. 25.10)
+        // Aberration: −20.4898″ / R
         let aberration = -20.4898 / 3600.0 / earth.radius
         sunLon += AngleMath.toRadians(aberration)
 
