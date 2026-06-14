@@ -101,11 +101,13 @@ enum PlanetaryPosition {
         let residualCorrection = PlanetResiduals.correctionArcsec(for: body, t: t)
         lonDeg = AngleMath.normalized(degrees: lonDeg - residualCorrection / 3600.0)
         latDeg -= PlanetResiduals.latitudeCorrectionArcsec(for: body, t: t) / 3600.0
+        let distance = d - PlanetResiduals.distanceCorrectionAU(for: body, t: t)
 
         return RawCelestialPosition(
             body: body,
             longitude: lonDeg,
-            latitude: latDeg
+            latitude: latDeg,
+            distance: distance
         )
     }
 

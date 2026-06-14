@@ -88,6 +88,25 @@ private let extendedBodyAccuracyCases: [BodyPositionCase] = [
     )
 ]
 
+private let distanceRangeCases: [(CelestialBody, ClosedRange<Double>)] = [
+    (.sun, 0.95...1.05),
+    (.moon, 0.00235...0.00275),
+    (.mercury, 0.5...1.6),
+    (.venus, 0.25...1.8),
+    (.mars, 0.35...2.7),
+    (.jupiter, 3.5...6.5),
+    (.saturn, 7.0...11.0),
+    (.uranus, 17.0...22.5),
+    (.neptune, 28.0...32.0),
+    (.pluto, 28.0...36.0)
+]
+
+private let outerPlanetDistanceAccuracyCases: [(CelestialBody, Int, Int, Int, Double)] = [
+    (.uranus, 1800, 1, 1, 18.047734991716),
+    (.neptune, 2026, 6, 14, 30.062782126122),
+    (.pluto, 1800, 1, 1, 41.519157904199)
+]
+
 @Suite("Ephemeris Regression")
 struct EphemerisRegressionTests {
     @Test(arguments: solarRegressionCases)
@@ -110,7 +129,7 @@ struct EphemerisRegressionTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
         )
         let baseline = AstroCalculator.moonPosition(for: baselineMoment)
-        #expect(abs(baseline.longitude - 223.32401040882044) < 0.000001)
+        #expect(abs(baseline.longitude - 223.32433584412911) < 0.000001)
         #expect(abs(baseline.latitude - 5.17) < 0.5)
         #expect(baseline.body == .moon)
 
@@ -173,6 +192,29 @@ struct EphemerisRegressionTests {
         }
     }
 
+    @Test func plutoDistanceMatchesBoundarySnapshot() throws {
+        let moment = try CivilMoment(
+            year: 2100, month: 12, day: 16, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        let distance = try #require(AstroCalculator.planetPosition(.pluto, for: moment).distance)
+        #expect(abs(distance - 48.385661680926) < 0.00005)
+    }
+
+    @Test(arguments: outerPlanetDistanceAccuracyCases)
+    func outerPlanetDistancesMatchAccuracySnapshots(
+        _ body: CelestialBody,
+        _ year: Int,
+        _ month: Int,
+        _ day: Int,
+        _ expectedDistance: Double
+    ) throws {
+        let moment = try CivilMoment(
+            year: year, month: month, day: day, hour: 0, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        let distance = try #require(AstroCalculator.planetPosition(body, for: moment).distance)
+        #expect(abs(distance - expectedDistance) < 0.00001)
+    }
+
     @Test func unifiedPlanetAPIMatchesDirectSunAndMoonPaths() throws {
         let moment = try CivilMoment(
             year: 2000, month: 6, day: 15, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
@@ -186,16 +228,46 @@ struct EphemerisRegressionTests {
         #expect(moonDirect == moonViaUnified)
     }
 
+    @Test func realBodiesExposeGeocentricDistances() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        let bodies = Set(distanceRangeCases.map(\.0) + [CelestialBody.meanNode, .trueNode, .lilith, .trueLilith])
+        let batched = AstroCalculator.positions(of: bodies, at: moment)
+        let states = AstroCalculator.states(of: bodies, at: moment)
+
+        for (body, range) in distanceRangeCases {
+            let direct = AstroCalculator.planetPosition(body, for: moment)
+            let distance = try #require(direct.distance)
+            #expect(distance.isFinite)
+            #expect(range.contains(distance))
+            #expect(try #require(batched[body]).distance == direct.distance)
+            let state = try #require(states[body])
+            #expect(state.distance == direct.distance)
+            #expect(state.position.distance == direct.distance)
+        }
+
+        for point in [CelestialBody.meanNode, .trueNode, .lilith, .trueLilith] {
+            #expect(AstroCalculator.planetPosition(point, for: moment).distance == nil)
+            #expect(try #require(batched[point]).distance == nil)
+            let state = try #require(states[point])
+            #expect(state.distance == nil)
+            #expect(state.position.distance == nil)
+        }
+    }
+
     @Test func computedPointsMatchSnapshotAtJ2000() throws {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
         )
         #expect(abs(AstroCalculator.planetPosition(.meanNode, for: moment).longitude - 125.0406471653018) < 1e-9)
-        #expect(abs(AstroCalculator.planetPosition(.trueNode, for: moment).longitude - 123.9497748099141) < 1e-9)
+        #expect(abs(AstroCalculator.planetPosition(.trueNode, for: moment).longitude - 123.95361473775787) < 1e-9)
         #expect(abs(AstroCalculator.planetPosition(.lilith, for: moment).longitude - 263.3488857119409) < 1e-9)
         for point in [CelestialBody.meanNode, .trueNode, .lilith] {
             #expect(AstroCalculator.planetPosition(point, for: moment).latitude == 0.0)
         }
+        // trueLilith carries ecliptic latitude (projected mean apogee).
+        #expect(AstroCalculator.planetPosition(.trueLilith, for: moment).latitude != 0.0)
     }
 
     @Test func lightCorrectionsStayWithinExpectedBounds() {

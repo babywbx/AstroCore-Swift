@@ -3,7 +3,7 @@
 # AstroCore
 
 A high-precision Western astrology computation library in pure Swift, covering 1800–2100.<br/>
-Sub-arcsecond accuracy for all bodies, zero dependencies, thread-safe.
+Tiered local-validation accuracy, zero dependencies, thread-safe.
 
 > v3 planning is in progress. This README still describes the stable 2.0.0 API;
 > see [docs/README.md](./docs/README.md) for design documents.
@@ -67,7 +67,7 @@ Sub-arcsecond accuracy for all bodies, zero dependencies, thread-safe.
 | 🌐 | **City Database** | 33,000+ global cities with coordinates & timezones (optional module) |
 | 🧵 | **Thread-Safe** | Full `Sendable` conformance |
 | 🚫 | **Zero Dependencies** | Pure Swift, no external runtime dependencies |
-| ✅ | **Sub-Arcsecond** | All primary bodies verified < 1″ against local validation baselines |
+| ✅ | **Tiered Precision** | Primary real bodies are locally validated; definition points are documented separately |
 
 <div align="right">
 
@@ -326,7 +326,7 @@ Validated at 2000-01-01 12:00 UTC, apparent ecliptic longitude:
 | ♃ | Jupiter | 25.2531° | 25.2531° | **0.14″** |
 | ♄ | Saturn | 40.3956° | 40.3956° | **0.04″** |
 
-> **All bodies < 1 arcsecond.**
+> **Listed core bodies are < 1 arcsecond in the local validation set.**
 
 Cross-validated across 750+ epochs spanning 1850–2100.
 
@@ -361,12 +361,12 @@ Release build, Apple Silicon (M-series):
 
 | Metric | Value |
 |--------|-------|
-| Test cases | **79** |
+| Test cases | **82** |
 | Test suites | **14** |
 
 Validation:
 
-- ✅ **Local validation baselines** — multi-epoch sub-arcsecond verification, 1850–2100
+- ✅ **Local validation baselines** — multi-epoch verification with tiered accuracy claims, 1850–2100
 - ✅ **Solstice cross-validation** — 2000 summer & 2024 winter solstice error < 1.5″
 - ✅ **8 global cities** — NYC, London, Tokyo, Berlin, Sydney, Mumbai, LA, Helsinki
 - ✅ **House systems** — 16 systems checked for cusp validity, angle alignment, and polar fallback behavior

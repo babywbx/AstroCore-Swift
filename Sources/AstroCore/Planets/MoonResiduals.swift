@@ -1,72 +1,115 @@
 import Foundation
 
-/// Empirical Moon longitude residual correction for the supported civil range.
+/// Empirical Moon residual corrections (longitude + latitude) for the supported civil range.
 ///
-/// The base ELP2000 implementation remains the primary model; these terms only
-/// remove the remaining few-arcsecond hotspots without materially changing the
-/// runtime profile.
+/// Fitted in the lunar fundamental-argument basis (D, M, M′, F, Ω) against the apparent
+/// local validation baseline. The base ELP2000 series plus geocentric light-time remain the primary model;
+/// these terms remove the residual truncation hotspots to sub-arcsecond.
 enum MoonResiduals {
-    private static let twoPi = 2.0 * Double.pi
-
-    private struct Term {
+    struct Term {
+        let d, m, mp, f, o: Int8
         let amplitude: Double // arcseconds
-        let angularFrequency: Double // radians per Julian century
         let phase: Double // radians
     }
 
     @inline(__always)
-    static func correctionArcsec(t: Double) -> Double {
+    static func longitudeArcsec(
+        d: Double, m: Double, mp: Double, f: Double, omega: Double
+    ) -> Double {
+        evaluate(longitudeTerms, d: d, m: m, mp: mp, f: f, omega: omega)
+    }
+
+    @inline(__always)
+    static func latitudeArcsec(
+        d: Double, m: Double, mp: Double, f: Double, omega: Double
+    ) -> Double {
+        evaluate(latitudeTerms, d: d, m: m, mp: mp, f: f, omega: omega)
+    }
+
+    @inline(__always)
+    private static func evaluate(
+        _ terms: [Term], d: Double, m: Double, mp: Double, f: Double, omega: Double
+    ) -> Double {
+        let deg2rad = Double.pi / 180.0
         var total = 0.0
         for term in terms {
-            total += term.amplitude * Foundation.sin(
-                term.angularFrequency * t + term.phase
-            )
+            let arg = (Double(term.d) * d + Double(term.m) * m
+                + Double(term.mp) * mp + Double(term.f) * f
+                + Double(term.o) * omega) * deg2rad
+            total += term.amplitude * Foundation.sin(arg + term.phase)
         }
         return total
     }
 
     // swiftlint:disable comma line_length
-    private static let terms: [Term] = [
-        Term(amplitude: 0.8549065816, angularFrequency: twoPi * 1074.1922762971, phase: 2.3330932704),
-        Term(amplitude: 0.7785764588, angularFrequency: twoPi * 1074.8545403392, phase: 3.1268078630),
-        Term(amplitude: 0.6096010964, angularFrequency: twoPi * 1064.2583156655, phase: -2.4522267328),
-        Term(amplitude: 0.5629659500, angularFrequency: twoPi * 91.3924378107, phase: -2.2130696032),
-        Term(amplitude: 0.4969757312, angularFrequency: twoPi * 1068.8941639602, phase: 2.7613470808),
-        Term(amplitude: 0.4859280227, angularFrequency: twoPi * 1.3245280842, phase: -2.1889222490),
-        Term(amplitude: 0.4263571533, angularFrequency: twoPi * 3.3113202105, phase: -1.0913738118),
-        Term(amplitude: 0.4096934343, angularFrequency: twoPi * 29.8018818948, phase: -1.0881325280),
-        Term(amplitude: 0.4035556686, angularFrequency: twoPi * 1.9867921263, phase: 2.3683192786),
-        Term(amplitude: 0.3860626927, angularFrequency: twoPi * 568.8848121697, phase: 2.8066897771),
-        Term(amplitude: 0.3645191979, angularFrequency: twoPi * 1148.3658490130, phase: 0.3976985664),
-        Term(amplitude: 0.3478567047, angularFrequency: twoPi * 125.1679039582, phase: -0.3359191303),
-        Term(amplitude: 0.3393731759, angularFrequency: twoPi * 1080.1526526760, phase: 2.5443484845),
-        Term(amplitude: 0.3348148661, angularFrequency: twoPi * 2.6490561684, phase: 0.1904392670),
-        Term(amplitude: 0.3261869908, angularFrequency: twoPi * 5.9603763790, phase: -1.4189550717),
-        Term(amplitude: 0.3258529091, angularFrequency: twoPi * 25.1660336001, phase: 2.7114771150),
-        Term(amplitude: 0.3031226822, angularFrequency: twoPi * 62.9150840001, phase: 2.0840206504),
-        Term(amplitude: 0.3020725466, angularFrequency: twoPi * 73.5113086738, phase: 1.8944704332),
-        Term(amplitude: 0.3015763588, angularFrequency: twoPi * 1076.8413324655, phase: 2.6139863687),
-        Term(amplitude: 0.2950960905, angularFrequency: twoPi * 0.6622640421, phase: -0.5733330988),
-        Term(amplitude: 0.2898557024, angularFrequency: twoPi * 1021.8734169706, phase: 2.5572486019),
-        Term(amplitude: 0.2782935973, angularFrequency: twoPi * 1200.0224442973, phase: -2.8822040233),
-        Term(amplitude: 0.2761568288, angularFrequency: twoPi * 1079.4903886339, phase: 2.0032853555),
-        Term(amplitude: 0.2746055473, angularFrequency: twoPi * 278.8131617269, phase: 1.5353966741),
-        Term(amplitude: 0.2652623805, angularFrequency: twoPi * 226.4943024005, phase: 2.6678350598),
-        Term(amplitude: 0.2625178114, angularFrequency: twoPi * 1044.3903944023, phase: 1.7752753754),
-        Term(amplitude: 0.2495817637, angularFrequency: twoPi * 1147.7035849709, phase: -0.3111638886),
-        Term(amplitude: 0.2374185714, angularFrequency: twoPi * 6.6226404211, phase: -0.4959005032),
-        Term(amplitude: 0.2359318858, angularFrequency: twoPi * 1077.5035965076, phase: -3.0613307383),
-        Term(amplitude: 0.2339893439, angularFrequency: twoPi * 1104.6564222340, phase: -2.4317736178),
-        Term(amplitude: 0.2285292779, angularFrequency: twoPi * 5.2981123369, phase: -1.7516717644),
-        Term(amplitude: 0.2264632743, angularFrequency: twoPi * 92.0547018528, phase: -1.3717751252),
-        Term(amplitude: 0.2116131004, angularFrequency: twoPi * 937.1036195810, phase: -0.9965461143),
-        Term(amplitude: 0.2110586781, angularFrequency: twoPi * 1142.4054726341, phase: -0.0372981729),
-        Term(amplitude: 0.2109509525, angularFrequency: twoPi * 848.3602379387, phase: -0.9192327178),
-        Term(amplitude: 0.1965862512, angularFrequency: twoPi * 87.4188535581, phase: -2.5950528008),
-        Term(amplitude: 0.1858035163, angularFrequency: twoPi * 93.3792299370, phase: 0.2389625386),
-        Term(amplitude: 0.1854498347, angularFrequency: twoPi * 30.4641459369, phase: -0.1961709995),
-        Term(amplitude: 0.1833964880, angularFrequency: twoPi * 1056.3111471602, phase: 0.0723092499),
-        Term(amplitude: 0.1785453058, angularFrequency: twoPi * 74.1735727160, phase: 2.7264474797)
+    private static let longitudeTerms: [Term] = [
+        Term(d: 1, m: 1, mp: 0, f: -1, o: -1, amplitude: 30.8817095335, phase: 1.8242607569),
+        Term(d: 2, m: 0, mp: 1, f: 2, o: 0, amplitude: 0.9900205133, phase: 0.0005085097),
+        Term(d: 2, m: 0, mp: -4, f: 0, o: 0, amplitude: 0.9484767452, phase: 3.1410871035),
+        Term(d: 2, m: -2, mp: 1, f: 0, o: 0, amplitude: 0.7541284279, phase: -3.1406958021),
+        Term(d: 0, m: 1, mp: -3, f: 0, o: 0, amplitude: 0.6699168760, phase: -0.0005379508),
+        Term(d: 4, m: 1, mp: -1, f: 0, o: 0, amplitude: 0.6363868604, phase: 0.0003849553),
+        Term(d: 1, m: 0, mp: 0, f: -2, o: 0, amplitude: 0.5839549622, phase: -0.0026036848),
+        Term(d: 1, m: 0, mp: 2, f: 0, o: 0, amplitude: 0.5837284171, phase: 0.0011522316),
+        Term(d: 4, m: -2, mp: -2, f: 2, o: 2, amplitude: 0.5711340566, phase: -0.4214160742),
+        Term(d: 1, m: -1, mp: 0, f: 0, o: 0, amplitude: 0.5617470350, phase: -0.0083947053),
+        Term(d: 2, m: 0, mp: -2, f: -2, o: 0, amplitude: 0.5610273441, phase: 0.0002867992),
+        Term(d: 0, m: 1, mp: 3, f: 0, o: 0, amplitude: 0.5465204870, phase: 0.0005144048),
+        Term(d: 2, m: 0, mp: -2, f: 2, o: 0, amplitude: 0.5352474083, phase: 0.0022477368),
+        Term(d: 1, m: 1, mp: -1, f: -1, o: -2, amplitude: 0.5081920631, phase: -1.2423111635),
+        Term(d: 2, m: 2, mp: -1, f: -1, o: 1, amplitude: 0.5036228644, phase: 2.0900778153),
+        Term(d: 1, m: 1, mp: -1, f: -1, o: 0, amplitude: 0.4986857463, phase: 1.6516662697),
+        Term(d: 2, m: -1, mp: -3, f: 0, o: 0, amplitude: 0.4790061491, phase: -3.1406018098),
+        Term(d: 2, m: 0, mp: 2, f: -2, o: 0, amplitude: 0.4550310976, phase: 0.0010796062),
+        Term(d: 2, m: 2, mp: -2, f: -1, o: 1, amplitude: 0.4539124387, phase: -2.7074274682),
+        Term(d: 2, m: 2, mp: 0, f: -1, o: 1, amplitude: 0.4425214319, phase: -2.6472079970),
+        Term(d: 2, m: -1, mp: -1, f: 2, o: 0, amplitude: 0.4263852111, phase: 0.0003064575),
+        Term(d: 0, m: 0, mp: 0, f: 4, o: 0, amplitude: 0.4203928318, phase: -3.1415580440),
+        Term(d: 0, m: 1, mp: 0, f: 2, o: 0, amplitude: 0.4139990051, phase: 3.1415657505),
+        Term(d: 3, m: 0, mp: 0, f: 0, o: 0, amplitude: 0.4040174741, phase: -3.1396307356)
+    ]
+
+    private static let latitudeTerms: [Term] = [
+        Term(d: 3, m: 0, mp: 0, f: -1, o: 0, amplitude: 0.3517610326, phase: -0.0010947452),
+        Term(d: 4, m: -1, mp: -1, f: 1, o: 0, amplitude: 0.3392345242, phase: -3.1410837355),
+        Term(d: 2, m: 0, mp: -1, f: -3, o: 0, amplitude: 0.3286539826, phase: 3.1413957104),
+        Term(d: 1, m: 1, mp: 0, f: -2, o: 0, amplitude: 0.3226998947, phase: 1.7624652458),
+        Term(d: 2, m: -2, mp: -1, f: 1, o: 0, amplitude: 0.3156551041, phase: -3.1412869761),
+        Term(d: 0, m: 1, mp: 2, f: -1, o: 0, amplitude: 0.3126420134, phase: 0.0006935441),
+        Term(d: 2, m: 0, mp: 0, f: -1, o: -1, amplitude: 0.3067219153, phase: 0.1473935893),
+        Term(d: 3, m: 0, mp: -1, f: -1, o: 0, amplitude: 0.3053143061, phase: -0.0026910634),
+        Term(d: 0, m: 1, mp: -2, f: 1, o: 0, amplitude: 0.3015564334, phase: 0.0001592274),
+        Term(d: 2, m: 0, mp: 1, f: -3, o: 0, amplitude: 0.2912590712, phase: 0.0006030673),
+        Term(d: 2, m: -2, mp: -1, f: -1, o: 0, amplitude: 0.2692732414, phase: -3.1415521381),
+        Term(d: 0, m: 0, mp: 4, f: 1, o: 0, amplitude: 0.2632683799, phase: -3.1410665751),
+        Term(d: 2, m: 0, mp: -3, f: 1, o: 0, amplitude: 0.2542902321, phase: 3.1411997146),
+        Term(d: 2, m: 0, mp: -1, f: 3, o: 0, amplitude: 0.2448096605, phase: 0.0003558339),
+        Term(d: 2, m: 1, mp: 1, f: 1, o: 0, amplitude: 0.2369777828, phase: 0.0000525058),
+        Term(d: 4, m: -1, mp: -2, f: 1, o: 0, amplitude: 0.2140657709, phase: -3.1412902978),
+        Term(d: 4, m: 0, mp: 1, f: 1, o: 0, amplitude: 0.2125799292, phase: -3.1409426969),
+        Term(d: 1, m: 1, mp: 0, f: 0, o: 1, amplitude: 0.2103363932, phase: 1.5245826359),
+        Term(d: 3, m: 0, mp: -1, f: 1, o: 0, amplitude: 0.2059666181, phase: -0.0003876376),
+        Term(d: 4, m: 1, mp: -1, f: -1, o: 0, amplitude: 0.1718516484, phase: -0.0019435262),
+        Term(d: 4, m: -1, mp: 0, f: 1, o: 0, amplitude: 0.1580342315, phase: -3.1411630426),
+        Term(d: 2, m: 0, mp: 3, f: -1, o: 0, amplitude: 0.1464082350, phase: -3.1407726775),
+        Term(d: 2, m: 0, mp: 0, f: 3, o: 0, amplitude: 0.1444962523, phase: 0.0005126288),
+        Term(d: 1, m: 0, mp: -1, f: 1, o: 0, amplitude: 0.1391919064, phase: -3.1389196590),
+        Term(d: 2, m: 0, mp: 3, f: 1, o: 0, amplitude: 0.1379294925, phase: -3.1408663169),
+        Term(d: 1, m: 1, mp: 0, f: -2, o: -2, amplitude: 0.1345965319, phase: 2.9206768911),
+        Term(d: 2, m: 0, mp: -4, f: -1, o: 0, amplitude: 0.1338660119, phase: 3.1407069550),
+        Term(d: 0, m: 0, mp: 2, f: -3, o: 0, amplitude: 0.1310195564, phase: 0.0074429799),
+        Term(d: 2, m: -1, mp: 2, f: -1, o: 0, amplitude: 0.1291192149, phase: 3.1404931196),
+        Term(d: 2, m: -1, mp: 2, f: 1, o: 0, amplitude: 0.1239559796, phase: -3.1412648890),
+        Term(d: 0, m: 0, mp: 2, f: 3, o: 0, amplitude: 0.1178478624, phase: 0.0005904841),
+        Term(d: 0, m: 2, mp: -1, f: -1, o: 0, amplitude: 0.1154216898, phase: 0.0528662570),
+        Term(d: 2, m: 2, mp: -1, f: 1, o: 0, amplitude: 0.1142749590, phase: -0.0020610183),
+        Term(d: 4, m: 1, mp: 0, f: -1, o: 0, amplitude: 0.1130586210, phase: -0.0009408414),
+        Term(d: 1, m: 0, mp: -2, f: -1, o: 0, amplitude: 0.1097591698, phase: -0.0039862645),
+        Term(d: 2, m: 2, mp: -1, f: -1, o: 0, amplitude: 0.1089636863, phase: -0.0019009378),
+        Term(d: 1, m: 1, mp: 1, f: 1, o: 0, amplitude: 0.1019376008, phase: -3.1409532672),
+        Term(d: 0, m: 2, mp: -1, f: 1, o: 0, amplitude: 0.0953811182, phase: 0.0012209777),
+        Term(d: 4, m: -2, mp: -1, f: 1, o: 2, amplitude: 0.0937514036, phase: -0.4213023469),
+        Term(d: 0, m: 0, mp: 4, f: -1, o: 0, amplitude: 0.0916095185, phase: -3.1408413168)
     ]
     // swiftlint:enable comma line_length
 }

@@ -7,7 +7,7 @@ struct ModelTests {
     @Test func coreEnumsExposeStableOrdering() {
         #expect(CelestialBody.allCases == [
             .sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto,
-            .meanNode, .trueNode, .lilith
+            .meanNode, .trueNode, .lilith, .trueLilith
         ])
     }
 
@@ -57,6 +57,7 @@ struct ModelTests {
             body: .mars,
             longitude: 42.5,
             latitude: 1.25,
+            distance: 1.42,
             speed: -0.13
         )
         #expect(state.isRetrograde)
@@ -64,7 +65,8 @@ struct ModelTests {
             state.position == CelestialPosition(
                 body: .mars,
                 longitude: 42.5,
-                latitude: 1.25
+                latitude: 1.25,
+                distance: 1.42
             )
         )
 

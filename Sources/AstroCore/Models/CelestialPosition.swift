@@ -4,7 +4,7 @@ public struct CelestialPosition: Sendable, Hashable, Codable {
     public let longitude: Double
     /// Geocentric ecliptic latitude [-90, 90]
     public let latitude: Double
-    /// Geocentric distance; nil for computed points and until a later phase populates bodies
+    /// Geocentric distance in AU; nil for computed points.
     public let distance: Double?
 
     public init(
@@ -26,4 +26,18 @@ struct RawCelestialPosition: Sendable {
     let longitude: Double
     /// Geocentric ecliptic latitude [-90, 90]
     let latitude: Double
+    /// Geocentric distance in AU; nil for computed points.
+    let distance: Double?
+
+    init(
+        body: CelestialBody,
+        longitude: Double,
+        latitude: Double,
+        distance: Double? = nil
+    ) {
+        self.body = body
+        self.longitude = longitude
+        self.latitude = latitude
+        self.distance = distance
+    }
 }

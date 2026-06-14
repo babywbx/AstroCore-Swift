@@ -36,6 +36,11 @@ enum ELP2000 {
             93.2720950 + 483202.0175233 * t - 0.0036539 * t2
                 - t3 / 3526000.0 + t4 / 863310000.0)
 
+        // Longitude of the mean ascending node (Ω) — carries the 18.6-yr residual modulation
+        let omega = AngleMath.normalized(degrees:
+            125.0445479 - 1934.1362891 * t + 0.0020754 * t2
+                + t3 / 467441.0 - t4 / 60616000.0)
+
         // Eccentricity correction factor
         let e = 1.0 - 0.002516 * t - 0.0000074 * t2
         let e2 = e * e
@@ -91,20 +96,38 @@ enum ELP2000 {
             + 127.0 * TrigDeg.sin(lp - mp)
             - 115.0 * TrigDeg.sin(lp + mp)
 
-        let fittedCorrectionArcsec = longitudeResidualCorrectionArcsec(
-            d: d, m: m, mp: mp, f: f
-        ) + MoonResiduals.correctionArcsec(t: t)
+        let distance = MoonDistanceData.distanceAU(julianCenturiesTT: t)
+
+        // Geometric ecliptic position (mean equinox of date).
+        let geometricLon = AngleMath.normalized(degrees: lp + sumL / 1000000.0)
+        let geometricLat = sumB / 1000000.0
+
+        // Geocentric light-time: the apparent Moon lags its geometric place by Ω̇-free
+        // mean motion over the light travel time. The constant ≈ -0.70″; the harmonic part
+        // is absorbed by the fitted residual below.
+        let lightTimeDays = distance * Self.lightTimeDaysPerAU
+        let lightTimeLon = Self.meanMotionLonDegPerDay * lightTimeDays
+
+        let lonResidual = MoonResiduals.longitudeArcsec(d: d, m: m, mp: mp, f: f, omega: omega)
+        let latResidual = MoonResiduals.latitudeArcsec(d: d, m: m, mp: mp, f: f, omega: omega)
+
         let lonDeg = AngleMath.normalized(
-            degrees: lp + sumL / 1000000.0 - fittedCorrectionArcsec / 3600.0
+            degrees: geometricLon - lightTimeLon - lonResidual / 3600.0
         )
-        let latDeg = sumB / 1000000.0
+        let latDeg = geometricLat - latResidual / 3600.0
 
         return RawCelestialPosition(
             body: .moon,
             longitude: lonDeg,
-            latitude: latDeg
+            latitude: latDeg,
+            distance: distance
         )
     }
+
+    /// Light travel time in days per AU (1 / speed of light in AU/day).
+    private static let lightTimeDaysPerAU = 0.0057755183
+    /// Moon mean motion in ecliptic longitude (deg/day), for the light-time offset.
+    private static let meanMotionLonDegPerDay = 481267.88123421 / 36525.0
 
     /// Longitude terms — 59 (1 zero-coefficient term elided)
     private struct LonTerm {
@@ -116,11 +139,6 @@ enum ELP2000 {
     private struct LatTerm {
         let d, m, mp, f: Int8
         let sinCoeff: Int32
-    }
-
-    private struct ResidualTerm {
-        let d, m, mp, f: Int8
-        let arcsec: Double
     }
 
     // swiftlint:disable comma line_length
@@ -248,58 +266,5 @@ enum ELP2000 {
         LatTerm(d: 4, m: -1, mp: 0, f: -1, sinCoeff: 115),
         LatTerm(d: 2, m: -2, mp: 0, f: 1, sinCoeff: 107)
     ]
-
-    /// Small residual correction tuned for the supported 1800-2100 range.
-    private static let longitudeResidualTerms: [ResidualTerm] = [
-        ResidualTerm(d: -2, m: 0, mp: -1, f: -2, arcsec: -0.996088),
-        ResidualTerm(d: -2, m: 0, mp: 4, f: 0, arcsec: 0.951354),
-        ResidualTerm(d: -2, m: 2, mp: -1, f: 0, arcsec: 0.777562),
-        ResidualTerm(d: 0, m: -1, mp: 3, f: 0, arcsec: -0.665147),
-        ResidualTerm(d: -1, m: 1, mp: 0, f: 0, arcsec: -0.647411),
-        ResidualTerm(d: -4, m: -1, mp: 1, f: 0, arcsec: -0.636782),
-        ResidualTerm(d: -1, m: 0, mp: 0, f: 2, arcsec: -0.588068),
-        ResidualTerm(d: -1, m: 1, mp: -1, f: 0, arcsec: -0.594593),
-        ResidualTerm(d: -1, m: 0, mp: -2, f: 0, arcsec: -0.578675),
-        ResidualTerm(d: -2, m: 0, mp: 2, f: 2, arcsec: -0.568432),
-        ResidualTerm(d: 0, m: -1, mp: -3, f: 0, arcsec: -0.553035),
-        ResidualTerm(d: -2, m: 0, mp: 2, f: -2, arcsec: -0.544997),
-        ResidualTerm(d: -2, m: 1, mp: 3, f: 0, arcsec: 0.477672),
-        ResidualTerm(d: -2, m: 1, mp: 1, f: -2, arcsec: -0.461120),
-        ResidualTerm(d: -2, m: 0, mp: -2, f: 2, arcsec: -0.452145),
-        ResidualTerm(d: -1, m: -1, mp: 2, f: 0, arcsec: 0.424781),
-        ResidualTerm(d: 0, m: -1, mp: 0, f: -2, arcsec: 0.411393),
-        ResidualTerm(d: -3, m: 0, mp: 0, f: 0, arcsec: 0.411540),
-        ResidualTerm(d: -2, m: 1, mp: 0, f: -2, arcsec: -0.383685),
-        ResidualTerm(d: -2, m: 1, mp: -1, f: 2, arcsec: -0.371738),
-        ResidualTerm(d: 0, m: 0, mp: -3, f: -2, arcsec: -0.319788),
-        ResidualTerm(d: -2, m: 2, mp: 2, f: 0, arcsec: 0.301817),
-        ResidualTerm(d: 0, m: -1, mp: 1, f: 2, arcsec: 0.302881),
-        ResidualTerm(d: -4, m: -1, mp: 0, f: 0, arcsec: -0.287241),
-        ResidualTerm(d: -2, m: -1, mp: -2, f: 0, arcsec: -0.281868),
-        ResidualTerm(d: -1, m: -1, mp: 0, f: 1, arcsec: -0.292640),
-        ResidualTerm(d: -4, m: 1, mp: -1, f: 0, arcsec: 0.287959),
-        ResidualTerm(d: -3, m: -1, mp: 1, f: 0, arcsec: 0.270128),
-        ResidualTerm(d: -1, m: 0, mp: 0, f: -2, arcsec: 0.268871),
-        ResidualTerm(d: -3, m: 0, mp: 0, f: 2, arcsec: -0.266446),
-        ResidualTerm(d: 0, m: -1, mp: -1, f: -2, arcsec: 0.264751),
-        ResidualTerm(d: 0, m: -2, mp: 2, f: 0, arcsec: -0.260818),
-        ResidualTerm(d: 1, m: -1, mp: 1, f: 0, arcsec: 0.248677),
-        ResidualTerm(d: -2, m: -2, mp: 2, f: 0, arcsec: -0.240983),
-        ResidualTerm(d: -3, m: 1, mp: 1, f: 0, arcsec: -0.220826)
-    ]
-
-    private static func longitudeResidualCorrectionArcsec(
-        d: Double, m: Double, mp: Double, f: Double
-    ) -> Double {
-        var total = 0.0
-        for term in longitudeResidualTerms {
-            let argument = Double(term.d) * d
-                + Double(term.m) * m
-                + Double(term.mp) * mp
-                + Double(term.f) * f
-            total += term.arcsec * TrigDeg.sin(argument)
-        }
-        return total
-    }
     // swiftlint:enable comma line_length
 }

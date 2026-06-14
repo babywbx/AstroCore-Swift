@@ -25,7 +25,7 @@ public enum AstroCalculator {
             ELP2000.compute(julianCenturiesTT: t)
         case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
             PlanetaryPosition.compute(body, tau: tau)
-        case .meanNode, .trueNode, .lilith:
+        case .meanNode, .trueNode, .lilith, .trueLilith:
             NodeLilith.position(body, julianCenturiesTT: t)
         }
         return AngleMath.normalized(degrees: raw.longitude + nutationArcsec / 3600.0)
@@ -122,7 +122,7 @@ public enum AstroCalculator {
                 from: PlanetaryPosition.compute(body, tau: tau),
                 nutationArcsec: moment.nutationLongitude
             )
-        case .meanNode, .trueNode, .lilith:
+        case .meanNode, .trueNode, .lilith, .trueLilith:
             let (_, t) = timeParameters(for: moment)
             return makePosition(
                 from: NodeLilith.position(body, julianCenturiesTT: t),
@@ -172,7 +172,7 @@ public enum AstroCalculator {
                     earth: VSOP87D.earthPosition(tau: tau)
                 )
                 raw = PlanetaryPosition.compute(body, tau: tau, earthMotion: motion)
-            case .meanNode, .trueNode, .lilith:
+            case .meanNode, .trueNode, .lilith, .trueLilith:
                 raw = NodeLilith.position(body, julianCenturiesTT: t)
             }
             result[body] = makePosition(from: raw, nutationArcsec: nutationLongitude)
@@ -200,6 +200,7 @@ public enum AstroCalculator {
                 body: position.body,
                 longitude: position.longitude,
                 latitude: position.latitude,
+                distance: position.distance,
                 speed: longitudeSpeed(fromLower: lowerLongitude, upper: upperLongitude)
             )
         }
@@ -249,7 +250,7 @@ public enum AstroCalculator {
                     tau: tau,
                     earthMotion: motion
                 )
-            case .meanNode, .trueNode, .lilith:
+            case .meanNode, .trueNode, .lilith, .trueLilith:
                 raw = NodeLilith.position(body, julianCenturiesTT: t)
             }
             longitudes[body] = apparentLongitude(
@@ -270,7 +271,8 @@ public enum AstroCalculator {
         return CelestialPosition(
             body: raw.body,
             longitude: longitude,
-            latitude: raw.latitude
+            latitude: raw.latitude,
+            distance: raw.distance
         )
     }
 
@@ -282,6 +284,7 @@ public enum AstroCalculator {
             body: position.body,
             longitude: position.longitude,
             latitude: position.latitude,
+            distance: position.distance,
             speed: longitudeSpeed(of: position.body, julianDayTT: jd)
         )
     }

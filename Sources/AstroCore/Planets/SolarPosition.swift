@@ -36,7 +36,8 @@ enum SolarPosition {
         return RawCelestialPosition(
             body: .sun,
             longitude: lonDeg,
-            latitude: latDeg
+            latitude: latDeg,
+            distance: earth.radius
         )
     }
 }
