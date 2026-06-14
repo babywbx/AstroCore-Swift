@@ -1,6 +1,18 @@
 import Foundation
 
-// AstroDataGen — Downloads and generates all data files for AstroCore
+// AstroDataGen — downloads and generates data files for AstroCore
+
+func requiredEnvironmentURL(_ key: String) throws -> URL {
+    guard let value = ProcessInfo.processInfo.environment[key],
+          !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    else {
+        throw DataGenError.missingEnvironmentURL(key)
+    }
+    guard let url = URL(string: value) else {
+        throw DataGenError.invalidEnvironmentURL(key, value)
+    }
+    return url
+}
 
 func findPackageRoot() -> URL {
     var dir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
@@ -36,13 +48,13 @@ func run() async throws {
     let cacheDir = rootDir.appendingPathComponent(".data-cache")
     try FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
 
-    // --- 1. Download VSOP87D files ---
+    // --- 1. Download coefficient files ---
     print("\n--- Downloading VSOP87D coefficient files ---")
-    let vsopBase = "https://cdsarc.cds.unistra.fr/ftp/cats/VI/81"
+    let vsopBase = try requiredEnvironmentURL("ASTRO_DATAGEN_VSOP_BASE_URL")
     let bodies = ["ear", "mer", "ven", "mar", "jup", "sat", "ura", "nep"]
     for body in bodies {
         let filename = "VSOP87D.\(body)"
-        let url = URL(string: "\(vsopBase)/\(filename)")!
+        let url = vsopBase.appendingPathComponent(filename)
         let dest = cacheDir.appendingPathComponent(filename)
         try await Downloader.download(url: url, to: dest, skipIfExists: true)
     }
@@ -52,7 +64,7 @@ func run() async throws {
     let cityDataTxt = cacheDir.appendingPathComponent("cities15000.txt")
     if !FileManager.default.fileExists(atPath: cityDataTxt.path) {
         let cityDataZip = cacheDir.appendingPathComponent("cities15000.zip")
-        let url = URL(string: "https://download.geonames.org/export/dump/cities15000.zip")!
+        let url = try requiredEnvironmentURL("ASTRO_DATAGEN_CITY_DATA_URL")
         try await Downloader.download(url: url, to: cityDataZip, skipIfExists: false)
         try ZipExtractor.extract(
             cityDataZip, to: cacheDir,
