@@ -93,8 +93,8 @@ enum VSOP87D {
         case .saturn: saturnSeries
         case .uranus: uranusSeries
         case .neptune: neptuneSeries
-        case .sun, .moon:
-            fatalError("Use SolarPosition/ELP2000 for \(body)")
+        case .sun, .moon, .pluto:
+            fatalError("Use a dedicated engine for \(body)")
         }
     }
 

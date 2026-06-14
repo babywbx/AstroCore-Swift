@@ -64,7 +64,7 @@ struct EphemerisRegressionTests {
         let moment = try CivilMoment(
             year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
         )
-        // uranus/neptune validated sub-arcsecond against a reference ephemeris
+        // uranus/neptune/pluto validated against a reference ephemeris (pluto 1800-2099)
         let expectations: [(CelestialBody, Double)] = [
             (.mercury, 271.8892835562328),
             (.venus, 241.56581962641636),
@@ -72,7 +72,8 @@ struct EphemerisRegressionTests {
             (.jupiter, 25.25310593667188),
             (.saturn, 40.39564718958692),
             (.uranus, 314.8091879148923),
-            (.neptune, 303.1930050584793)
+            (.neptune, 303.1930050584793),
+            (.pluto, 251.4548273189990)
         ]
         for (body, expectedLongitude) in expectations {
             let position = AstroCalculator.planetPosition(body, for: moment)

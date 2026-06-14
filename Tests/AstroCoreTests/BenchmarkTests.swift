@@ -58,7 +58,7 @@ struct BenchmarkTests {
             year: 2000, month: 1, day: 1, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let bodies: [CelestialBody] = [.mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune]
+        let bodies: [CelestialBody] = [.mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto]
         let iterations = 500
         for body in bodies {
             let result = benchmark(iterations: iterations) {

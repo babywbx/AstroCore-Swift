@@ -28,11 +28,9 @@ enum PlanetaryPosition {
     static func compute(
         _ body: CelestialBody, tau: Double, earthMotion: EarthMotion
     ) -> RawCelestialPosition {
-        let series = VSOP87D.planetSeries(body)
-
         // Iterate light-time correction (2 iterations sufficient)
         var planetTau = tau
-        var planet = VSOP87D.planetPosition(series, tau: planetTau)
+        var planet = heliocentric(body, tau: planetTau)
 
         for _ in 0..<2 {
             let planetRect = rectangular(from: planet)
@@ -43,7 +41,7 @@ enum PlanetaryPosition {
             // Light-time in Julian millennia: 0.0057755183 days/AU → millennia
             let lightTimeMill = 0.0057755183 * distance / 365250.0
             planetTau = tau - lightTimeMill
-            planet = VSOP87D.planetPosition(series, tau: planetTau)
+            planet = heliocentric(body, tau: planetTau)
         }
 
         // Final geocentric rectangular
@@ -71,13 +69,12 @@ enum PlanetaryPosition {
         var lonDeg = AngleMath.normalized(degrees: AngleMath.toDegrees(lonRad))
         let latDeg = AngleMath.toDegrees(latRad)
 
-        // FK5 frame correction
-        lonDeg = AngleMath.normalized(degrees: lonDeg + Self.fk5LongitudeCorrectionArcsec() / 3600.0)
-
-        // Per-planet residual correction (empirical fit to a reference ephemeris)
-        // tau is Julian millennia; convert to Julian centuries for correctionArcsec
-        let t = tau * 10.0
-        let residualCorrection = PlanetResiduals.correctionArcsec(for: body, t: t)
+        // FK5 frame correction (skipped for Pluto — its fit is already in that frame).
+        if body != .pluto {
+            lonDeg = AngleMath.normalized(degrees: lonDeg + Self.fk5LongitudeCorrectionArcsec() / 3600.0)
+        }
+        // Per-body residual correction toward a reference ephemeris.
+        let residualCorrection = PlanetResiduals.correctionArcsec(for: body, t: tau * 10.0)
         lonDeg = AngleMath.normalized(degrees: lonDeg - residualCorrection / 3600.0)
 
         // Apply gravitational light deflection by the Sun.
@@ -104,6 +101,16 @@ enum PlanetaryPosition {
             longitude: lonDeg,
             latitude: latDeg
         )
+    }
+
+    @inline(__always)
+    private static func heliocentric(
+        _ body: CelestialBody, tau: Double
+    ) -> VSOP87D.SphericalPosition {
+        if body == .pluto {
+            return PlutoPosition.heliocentric(tau: tau)
+        }
+        return VSOP87D.planetPosition(VSOP87D.planetSeries(body), tau: tau)
     }
 
     /// FK5 frame correction for ecliptic longitude.

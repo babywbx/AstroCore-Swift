@@ -22,6 +22,7 @@ enum PlanetResiduals {
         case .saturn: terms = saturnTerms
         case .uranus: terms = uranusTerms
         case .neptune: terms = neptuneTerms
+        case .pluto: terms = plutoTerms
         default: return 0.0
         }
         var total = 0.0
@@ -120,6 +121,19 @@ enum PlanetResiduals {
         Term(amplitude: 0.3506340994, frequency: 0.5950000000, phase: -0.7020146719),
         Term(amplitude: 0.0391508764, frequency: 0.8300000000, phase: -1.0564452864),
         Term(amplitude: 0.0245211173, frequency: 1.1600000000, phase: -2.6852640313)
+    ]
+    // swiftlint:enable comma line_length
+
+    // swiftlint:disable comma line_length
+    private static let plutoTerms: [Term] = [
+        Term(amplitude: 3.4473761887, frequency: 0.0700000000, phase: -1.5214550602),
+        Term(amplitude: 0.6013548547, frequency: 0.5100000000, phase: -1.3224122111),
+        Term(amplitude: 0.1891892815, frequency: 1.0100000000, phase: -0.5138740103),
+        Term(amplitude: 0.0569568154, frequency: 1.3000000000, phase: -0.5581761523),
+        Term(amplitude: 0.0468180357, frequency: 1.7200000000, phase: 0.5739892985),
+        Term(amplitude: 0.0638296390, frequency: 0.7500000000, phase: -0.1220618989),
+        Term(amplitude: 0.0193877553, frequency: 2.0000000000, phase: -0.5753257802),
+        Term(amplitude: 0.0123010197, frequency: 2.6200000000, phase: 0.7788279422)
     ]
     // swiftlint:enable comma line_length
 }

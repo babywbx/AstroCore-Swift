@@ -6,7 +6,7 @@ import Testing
 struct ModelTests {
     @Test func coreEnumsExposeStableOrdering() {
         #expect(CelestialBody.allCases == [
-            .sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune
+            .sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto
         ])
     }
 

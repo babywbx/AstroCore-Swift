@@ -23,7 +23,7 @@ public enum AstroCalculator {
             SolarPosition.compute(tau: tau, t: t)
         case .moon:
             ELP2000.compute(julianCenturiesTT: t)
-        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune:
+        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
             PlanetaryPosition.compute(body, tau: tau)
         }
         return AngleMath.normalized(degrees: raw.longitude + nutationArcsec / 3600.0)
@@ -114,7 +114,7 @@ public enum AstroCalculator {
         switch body {
         case .sun: return sunPosition(for: moment)
         case .moon: return moonPosition(for: moment)
-        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune:
+        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
             let (tau, _) = timeParameters(for: moment)
             return makePosition(
                 from: PlanetaryPosition.compute(body, tau: tau),
@@ -158,7 +158,7 @@ public enum AstroCalculator {
                 raw = SolarPosition.compute(tau: tau, t: t, earth: e)
             case .moon:
                 raw = ELP2000.compute(julianCenturiesTT: t)
-            case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune:
+            case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
                 let motion = earthMotion ?? PlanetaryPosition.earthMotion(
                     tau: tau,
                     earth: VSOP87D.earthPosition(tau: tau)
@@ -229,7 +229,7 @@ public enum AstroCalculator {
                 raw = SolarPosition.compute(tau: tau, t: t, earth: e)
             case .moon:
                 raw = ELP2000.compute(julianCenturiesTT: t)
-            case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune:
+            case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
                 let motion = earthMotion ?? PlanetaryPosition.earthMotion(
                     tau: tau,
                     earth: VSOP87D.earthPosition(tau: tau)
