@@ -9,7 +9,7 @@ struct NeutralBatchTests {
             year: 1990, month: 8, day: 15, hour: 14, minute: 30,
             timeZoneIdentifier: "America/New_York"
         )
-        let bodies: Set<CelestialBody> = [.sun, .moon, .mercury, .jupiter]
+        let bodies = Set(CelestialBody.allCases)
         let batch = AstroCalculator.positions(of: bodies, at: moment)
         #expect(batch.count == bodies.count)
         for body in bodies {
@@ -22,7 +22,7 @@ struct NeutralBatchTests {
             year: 2000, month: 6, day: 15, hour: 12, minute: 0,
             timeZoneIdentifier: "UTC"
         )
-        let bodies: Set<CelestialBody> = [.sun, .mars]
+        let bodies = Set(CelestialBody.allCases)
         let batch = AstroCalculator.states(of: bodies, at: moment)
         for body in bodies {
             let single = AstroCalculator.celestialState(body, for: moment)

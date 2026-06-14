@@ -1,4 +1,4 @@
-// Auto-derived Pluto heliocentric fit (mean ecliptic of date), valid 1800-2099.
+// Pluto heliocentric fit (mean ecliptic of date), valid 1800-2100.
 // degrees/AU = poly(T) + Σ a·sin(2π f T) + b·cos(2π f T), T = Julian centuries TT.
 // swiftlint:disable comma line_length
 enum PlutoData {

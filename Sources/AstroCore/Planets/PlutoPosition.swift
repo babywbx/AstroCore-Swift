@@ -1,6 +1,6 @@
 import Foundation
 
-/// Pluto heliocentric position from a self-derived fit (mean ecliptic of date), valid 1800-2099.
+/// Pluto heliocentric position fit for the supported 1800-2100 range.
 enum PlutoPosition {
     static func heliocentric(tau: Double) -> VSOP87D.SphericalPosition {
         let t = tau * 10.0 // Julian centuries TT

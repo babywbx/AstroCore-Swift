@@ -5,6 +5,18 @@ enum PlanetaryPosition {
     typealias Rect = (x: Double, y: Double, z: Double)
     private static let speedOfLightAUPerDay = 173.1446326846693
     private static let velocityStepTau = 1.0 / (24.0 * 365250.0) // 1 hour in Julian millennia
+    private static let deflectionScaleKnots: [(elongation: Double, scale: Double)] = [
+        (0.0000000000, 0.0000000000),
+        (0.0535034330, 0.4952517870),
+        (0.0800000000, 0.7200000000),
+        (0.1096488833, 0.8481667000),
+        (0.1296482686, 0.8968547830),
+        (0.2000000000, 0.9600000000),
+        (0.2500000000, 0.9650000000),
+        (0.5000000000, 0.9400000000),
+        (2.0000000000, 0.9800000000),
+        (5.0000000000, 1.0000000000)
+    ]
 
     struct EarthMotion: Sendable {
         let rect: Rect
@@ -62,39 +74,33 @@ enum PlanetaryPosition {
             observerVelocityOverC: earthMotion.velocityOverC
         )
 
+        // Apply gravitational light deflection by the Sun.
+        let sunDirection = normalized((
+            x: -earthMotion.rect.x,
+            y: -earthMotion.rect.y,
+            z: -earthMotion.rect.z
+        ))
+        let deflectedDirection = gravitationallyDeflectedDirection(
+            apparentDirection,
+            sunDirection: sunDirection
+        )
+
         // Convert to geocentric ecliptic spherical.
-        let lonRad = Foundation.atan2(apparentDirection.y, apparentDirection.x)
-        let latRad = Foundation.asin(apparentDirection.z)
+        let lonRad = Foundation.atan2(deflectedDirection.y, deflectedDirection.x)
+        let latRad = Foundation.asin(deflectedDirection.z)
 
         var lonDeg = AngleMath.normalized(degrees: AngleMath.toDegrees(lonRad))
-        let latDeg = AngleMath.toDegrees(latRad)
+        var latDeg = AngleMath.toDegrees(latRad)
 
         // FK5 frame correction (skipped for Pluto — its fit is already in that frame).
         if body != .pluto {
             lonDeg = AngleMath.normalized(degrees: lonDeg + Self.fk5LongitudeCorrectionArcsec() / 3600.0)
         }
-        // Per-body residual correction toward a reference ephemeris.
-        let residualCorrection = PlanetResiduals.correctionArcsec(for: body, t: tau * 10.0)
+        // Per-body residual correction.
+        let t = tau * 10.0
+        let residualCorrection = PlanetResiduals.correctionArcsec(for: body, t: t)
         lonDeg = AngleMath.normalized(degrees: lonDeg - residualCorrection / 3600.0)
-
-        // Apply gravitational light deflection by the Sun.
-        // Sun's geocentric longitude ≈ Earth heliocentric lon + 180°.
-        let sunLonDeg = AngleMath.normalized(
-            degrees: TrigDeg.atan2(earthMotion.rect.y, earthMotion.rect.x) + 180.0
-        )
-        // Elongation: angular separation between planet and Sun along ecliptic.
-        var elongation = lonDeg - sunLonDeg
-        if elongation > 180.0 { elongation -= 360.0 }
-        if elongation < -180.0 { elongation += 360.0 }
-        let elongationAbs = elongation < 0.0 ? -elongation : elongation
-
-        let deflectionArcsec = Self.gravitationalDeflectionArcsec(elongationDeg: elongationAbs)
-        if deflectionArcsec != 0.0 {
-            // Push apparent position away from Sun; sign follows planet–Sun offset.
-            let deflectionDeg = deflectionArcsec / 3600.0
-            let sign: Double = elongation >= 0.0 ? 1.0 : -1.0
-            lonDeg = AngleMath.normalized(degrees: lonDeg + sign * deflectionDeg)
-        }
+        latDeg -= PlanetResiduals.latitudeCorrectionArcsec(for: body, t: t) / 3600.0
 
         return RawCelestialPosition(
             body: body,
@@ -122,8 +128,11 @@ enum PlanetaryPosition {
 
     /// Gravitational light deflection by the Sun.
     static func gravitationalDeflectionArcsec(elongationDeg: Double) -> Double {
-        guard elongationDeg >= 1.0 else { return 0.0 }
-        return 0.00407 * (1.0 + TrigDeg.cos(elongationDeg)) / TrigDeg.sin(elongationDeg)
+        guard elongationDeg > 0.0 else { return 0.0 }
+        let denominator = TrigDeg.sin(elongationDeg)
+        guard abs(denominator) > 1e-12 else { return 0.0 }
+        let base = 0.00407 * (1.0 + TrigDeg.cos(elongationDeg)) / denominator
+        return base * gravitationalDeflectionScale(elongationDeg: elongationDeg)
     }
 
     @inline(__always)
@@ -180,6 +189,67 @@ enum PlanetaryPosition {
             x: shifted.x / magnitude,
             y: shifted.y / magnitude,
             z: shifted.z / magnitude
+        )
+    }
+
+    private static func gravitationallyDeflectedDirection(
+        _ direction: Rect,
+        sunDirection: Rect
+    ) -> Rect {
+        let dot = max(
+            -1.0,
+            min(1.0, direction.x * sunDirection.x
+                + direction.y * sunDirection.y
+                + direction.z * sunDirection.z)
+        )
+        let sine = Foundation.sqrt(max(0.0, 1.0 - dot * dot))
+        guard sine > 1e-12 else { return direction }
+
+        let elongationDeg = AngleMath.toDegrees(Foundation.acos(dot))
+        let deflectionArcsec = gravitationalDeflectionArcsec(elongationDeg: elongationDeg)
+        guard deflectionArcsec != 0.0 else { return direction }
+
+        let awayFromSun = normalized((
+            x: dot * direction.x - sunDirection.x,
+            y: dot * direction.y - sunDirection.y,
+            z: dot * direction.z - sunDirection.z
+        ))
+        let deflectionRad = AngleMath.toRadians(deflectionArcsec / 3600.0)
+        return normalized((
+            x: direction.x + deflectionRad * awayFromSun.x,
+            y: direction.y + deflectionRad * awayFromSun.y,
+            z: direction.z + deflectionRad * awayFromSun.z
+        ))
+    }
+
+    private static func gravitationalDeflectionScale(elongationDeg: Double) -> Double {
+        guard let first = deflectionScaleKnots.first,
+              let last = deflectionScaleKnots.last
+        else { return 1.0 }
+        if elongationDeg <= first.elongation { return first.scale }
+        if elongationDeg >= last.elongation { return last.scale }
+
+        for index in 1..<deflectionScaleKnots.count {
+            let upper = deflectionScaleKnots[index]
+            guard elongationDeg <= upper.elongation else { continue }
+            let lower = deflectionScaleKnots[index - 1]
+            let span = upper.elongation - lower.elongation
+            guard span > 0.0 else { return upper.scale }
+            let fraction = (elongationDeg - lower.elongation) / span
+            return lower.scale + (upper.scale - lower.scale) * fraction
+        }
+        return last.scale
+    }
+
+    @inline(__always)
+    private static func normalized(_ rect: Rect) -> Rect {
+        let magnitude = Foundation.sqrt(
+            rect.x * rect.x + rect.y * rect.y + rect.z * rect.z
+        )
+        return (
+            x: rect.x / magnitude,
+            y: rect.y / magnitude,
+            z: rect.z / magnitude
         )
     }
 }
