@@ -156,6 +156,28 @@ public enum AstroCalculator {
         )
     }
 
+    /// Geometric heliocentric ecliptic position (mean equinox & ecliptic of date) for planets.
+    /// nil for the Sun (origin), Moon (geocentric-only) and computed points.
+    public static func heliocentric(
+        of body: CelestialBody, at moment: CivilMoment
+    ) -> EclipticCoordinate? {
+        let tau = moment.julianMillenniaTT
+        let helio: VSOP87D.SphericalPosition
+        switch body {
+        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune:
+            helio = VSOP87D.planetPosition(body, tau: tau)
+        case .pluto:
+            helio = PlutoPosition.heliocentric(tau: tau)
+        case .sun, .moon, .meanNode, .trueNode, .lilith, .trueLilith:
+            return nil
+        }
+        return EclipticCoordinate(
+            longitude: AngleMath.normalized(degrees: AngleMath.toDegrees(helio.longitude)),
+            latitude: AngleMath.toDegrees(helio.latitude),
+            distance: helio.radius
+        )
+    }
+
     /// --- Batch (neutral, no ascendant / zodiac) ---
     public static func positions(
         of bodies: Set<CelestialBody>,

@@ -48,4 +48,36 @@ struct DerivedCoordinateTests {
     //         #expect(abs(eq.declination - dec) < twoArcsec)
     //     }
     // }
+
+    private let heliocentricRadiusRanges: [(CelestialBody, ClosedRange<Double>)] = [
+        (.mercury, 0.30...0.48), (.venus, 0.71...0.74), (.mars, 1.36...1.68),
+        (.jupiter, 4.9...5.5), (.saturn, 8.9...10.2), (.uranus, 18.2...20.2),
+        (.neptune, 29.7...30.5), (.pluto, 29.6...49.4)
+    ]
+
+    @Test func heliocentricPlanetsAreInRange() throws {
+        let moment = try j2000()
+        for (body, range) in heliocentricRadiusRanges {
+            let helio = try #require(AstroCalculator.heliocentric(of: body, at: moment))
+            #expect((0.0..<360.0).contains(helio.longitude))
+            #expect((-90.0...90.0).contains(helio.latitude))
+            #expect(range.contains(helio.distance))
+        }
+    }
+
+    @Test func heliocentricIsNilForNonPlanets() throws {
+        let moment = try j2000()
+        for body in [CelestialBody.sun, .moon, .meanNode, .trueNode, .lilith, .trueLilith] {
+            #expect(AstroCalculator.heliocentric(of: body, at: moment) == nil)
+        }
+    }
+
+    // TODO(a4a): fill from local reference capture (controller will drive). MEASURED, NOT FABRICATED.
+    // @Test func heliocentricMatchesIndependentAnchor() throws {
+    //     let moment = try j2000()
+    //     let helio = try #require(AstroCalculator.heliocentric(of: .jupiter, at: moment))
+    //     AstroCoreTestSupport.expectCircularlyEqual(helio.longitude, MEASURED_JUP_HELIO_LON, tolerance: 2.0 / 3600.0, "jup helio lon")
+    //     #expect(abs(helio.latitude - MEASURED_JUP_HELIO_LAT) < 2.0 / 3600.0)
+    //     #expect(abs(helio.distance - MEASURED_JUP_HELIO_R) < 0.00001)
+    // }
 }
