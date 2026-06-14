@@ -67,4 +67,19 @@ struct BenchmarkTests {
             print("🪐  \(body) position: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
         }
     }
+
+    @Test func benchmarkDerivedCoordinates() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        let iterations = 2000
+        let eq = benchmark(iterations: iterations) {
+            _ = AstroCalculator.equatorial(of: .mars, at: moment)
+        }
+        print("📐  Mars equatorial: \(formatMicroseconds(eq.perCallMicroseconds)) µs/call")
+        let helio = benchmark(iterations: iterations) {
+            _ = AstroCalculator.heliocentric(of: .mars, at: moment)
+        }
+        print("☉  Mars heliocentric: \(formatMicroseconds(helio.perCallMicroseconds)) µs/call")
+    }
 }
