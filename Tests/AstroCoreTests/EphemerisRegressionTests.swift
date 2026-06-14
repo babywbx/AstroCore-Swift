@@ -96,6 +96,19 @@ struct EphemerisRegressionTests {
         #expect(moonDirect == moonViaUnified)
     }
 
+    @Test func computedPointsMatchSnapshotAtJ2000() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        // mean node sub-arcsecond vs reference; true node osculating; lilith = pure mean apogee
+        #expect(abs(AstroCalculator.planetPosition(.meanNode, for: moment).longitude - 125.0406471653018) < 1e-9)
+        #expect(abs(AstroCalculator.planetPosition(.trueNode, for: moment).longitude - 123.9497748099141) < 1e-9)
+        #expect(abs(AstroCalculator.planetPosition(.lilith, for: moment).longitude - 263.3488857119409) < 1e-9)
+        for point in [CelestialBody.meanNode, .trueNode, .lilith] {
+            #expect(AstroCalculator.planetPosition(point, for: moment).latitude == 0.0)
+        }
+    }
+
     @Test func lightCorrectionsStayWithinExpectedBounds() {
         let elongations = [1.0, 5.0, 10.0, 30.0, 45.0, 90.0, 120.0]
         for elongation in elongations {

@@ -25,6 +25,8 @@ public enum AstroCalculator {
             ELP2000.compute(julianCenturiesTT: t)
         case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
             PlanetaryPosition.compute(body, tau: tau)
+        case .meanNode, .trueNode, .lilith:
+            NodeLilith.position(body, julianCenturiesTT: t)
         }
         return AngleMath.normalized(degrees: raw.longitude + nutationArcsec / 3600.0)
     }
@@ -120,6 +122,12 @@ public enum AstroCalculator {
                 from: PlanetaryPosition.compute(body, tau: tau),
                 nutationArcsec: moment.nutationLongitude
             )
+        case .meanNode, .trueNode, .lilith:
+            let (_, t) = timeParameters(for: moment)
+            return makePosition(
+                from: NodeLilith.position(body, julianCenturiesTT: t),
+                nutationArcsec: moment.nutationLongitude
+            )
         }
     }
 
@@ -164,6 +172,8 @@ public enum AstroCalculator {
                     earth: VSOP87D.earthPosition(tau: tau)
                 )
                 raw = PlanetaryPosition.compute(body, tau: tau, earthMotion: motion)
+            case .meanNode, .trueNode, .lilith:
+                raw = NodeLilith.position(body, julianCenturiesTT: t)
             }
             result[body] = makePosition(from: raw, nutationArcsec: nutationLongitude)
         }
@@ -239,6 +249,8 @@ public enum AstroCalculator {
                     tau: tau,
                     earthMotion: motion
                 )
+            case .meanNode, .trueNode, .lilith:
+                raw = NodeLilith.position(body, julianCenturiesTT: t)
             }
             longitudes[body] = apparentLongitude(
                 from: raw,

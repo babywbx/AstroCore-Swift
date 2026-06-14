@@ -93,7 +93,7 @@ enum VSOP87D {
         case .saturn: saturnSeries
         case .uranus: uranusSeries
         case .neptune: neptuneSeries
-        case .sun, .moon, .pluto:
+        case .sun, .moon, .pluto, .meanNode, .trueNode, .lilith:
             fatalError("Use a dedicated engine for \(body)")
         }
     }
