@@ -1,4 +1,5 @@
-@testable import AstroCore
+@testable import AstroAstrology
+import AstroCore
 import Foundation
 import Testing
 
@@ -46,7 +47,7 @@ struct HouseSystemTests {
                 lastDegrees: armc,
                 trueObliquityDegrees: epsilon
             )
-            AstroCoreTestSupport.expectCircularlyEqual(midheaven, armc, tolerance: 1e-9)
+            AstrologyTestSupport.expectCircularlyEqual(midheaven, armc, tolerance: 1e-9)
         }
 
         for armc in stride(from: 5.0, through: 355.0, by: 7.0)
@@ -104,9 +105,9 @@ struct HouseSystemTests {
     }
 
     @Test func allSystemsProduceValidCuspsAcrossRepresentativeCities() throws {
-        for fixture in try AstroCoreTestSupport.coreHouseFixtures() {
+        for fixture in try AstrologyTestSupport.coreHouseFixtures() {
             for system in HouseSystem.allCases {
-                let result = try AstroCalculator.houses(
+                let result = try AstrologyCalculator.houses(
                     for: fixture.moment,
                     coordinate: fixture.coordinate,
                     system: system
@@ -114,56 +115,56 @@ struct HouseSystemTests {
                 #expect(result.requestedSystem == system)
                 #expect(result.resolvedSystem == system)
                 #expect(result.usedRequestedSystem)
-                AstroCoreTestSupport.expectValidCusps(result.cusps)
-                AstroCoreTestSupport.expectCuspPartition(result.cusps)
+                AstrologyTestSupport.expectValidCusps(result.cusps)
+                AstrologyTestSupport.expectCuspPartition(result.cusps)
             }
         }
     }
 
     @Test func equalDivisionSystemsFollowTheirDefinitions() throws {
-        let fixture = try AstroCoreTestSupport.newYork1990()
+        let fixture = try AstrologyTestSupport.newYork1990()
 
-        let equalAsc = try AstroCalculator.houses(
+        let equalAsc = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .equalASC
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             equalAsc.cusps[0].eclipticLongitude,
             equalAsc.angles.ascendant,
             tolerance: 1e-9
         )
         for index in 0..<11 {
-            let arc = AstroCoreTestSupport.forwardArc(
+            let arc = AstrologyTestSupport.forwardArc(
                 equalAsc.cusps[index].eclipticLongitude,
                 equalAsc.cusps[index + 1].eclipticLongitude
             )
             #expect(abs(arc - 30.0) < 1e-9)
         }
 
-        let equalMC = try AstroCalculator.houses(
+        let equalMC = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .equalMC
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             equalMC.cusps[9].eclipticLongitude,
             equalMC.angles.midheaven,
             tolerance: 1e-9
         )
 
-        let vehlow = try AstroCalculator.houses(
+        let vehlow = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .vehlow
         )
-        let offset = AstroCoreTestSupport.forwardArc(
+        let offset = AstrologyTestSupport.forwardArc(
             vehlow.cusps[0].eclipticLongitude,
             vehlow.angles.ascendant
         )
         #expect(abs(offset - 15.0) < 1e-9)
 
-        let wholeSign = try AstroCalculator.houses(
+        let wholeSign = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .wholeSign
@@ -180,34 +181,34 @@ struct HouseSystemTests {
     }
 
     @Test func porphyryAndSripatiMaintainTheirRelationships() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let porphyry = try AstroCalculator.houses(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let porphyry = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .porphyry
         )
-        let sripati = try AstroCalculator.houses(
+        let sripati = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .sripati
         )
 
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             porphyry.cusps[0].eclipticLongitude,
             porphyry.angles.ascendant,
             tolerance: 1e-9
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             porphyry.cusps[3].eclipticLongitude,
             porphyry.angles.imumCoeli,
             tolerance: 1e-9
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             porphyry.cusps[6].eclipticLongitude,
             porphyry.angles.descendant,
             tolerance: 1e-9
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             porphyry.cusps[9].eclipticLongitude,
             porphyry.angles.midheaven,
             tolerance: 1e-9
@@ -219,9 +220,9 @@ struct HouseSystemTests {
             let c1 = porphyry.cusps[quadrant.lowerBound + 1].eclipticLongitude
             let c2 = porphyry.cusps[quadrant.lowerBound + 2].eclipticLongitude
             let c3 = porphyry.cusps[quadrant.upperBound % 12].eclipticLongitude
-            let arc1 = AstroCoreTestSupport.forwardArc(c0, c1)
-            let arc2 = AstroCoreTestSupport.forwardArc(c1, c2)
-            let arc3 = AstroCoreTestSupport.forwardArc(c2, c3)
+            let arc1 = AstrologyTestSupport.forwardArc(c0, c1)
+            let arc2 = AstrologyTestSupport.forwardArc(c1, c2)
+            let arc3 = AstrologyTestSupport.forwardArc(c2, c3)
             #expect(abs(arc1 - arc2) < 1e-9)
             #expect(abs(arc2 - arc3) < 1e-9)
         }
@@ -230,9 +231,9 @@ struct HouseSystemTests {
             let start = porphyry.cusps[(index + 11) % 12].eclipticLongitude
             let end = porphyry.cusps[index].eclipticLongitude
             let midpoint = AngleMath.normalized(
-                degrees: start + AstroCoreTestSupport.forwardArc(start, end) / 2.0
+                degrees: start + AstrologyTestSupport.forwardArc(start, end) / 2.0
             )
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 sripati.cusps[index].eclipticLongitude,
                 midpoint,
                 tolerance: 1e-9
@@ -241,33 +242,33 @@ struct HouseSystemTests {
     }
 
     @Test func angleAlignedSystemsKeepCardinalCuspsOnAngles() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
+        let fixture = try AstrologyTestSupport.paris1995()
 
         for system in angleAlignedSystems {
-            let result = try AstroCalculator.houses(
+            let result = try AstrologyCalculator.houses(
                 for: fixture.moment,
                 coordinate: fixture.coordinate,
                 system: system
             )
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 result.cusps[0].eclipticLongitude,
                 result.angles.ascendant,
                 tolerance: 1e-7,
                 "\(system) cusp 1"
             )
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 result.cusps[3].eclipticLongitude,
                 result.angles.imumCoeli,
                 tolerance: 1e-7,
                 "\(system) cusp 4"
             )
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 result.cusps[6].eclipticLongitude,
                 result.angles.descendant,
                 tolerance: 1e-7,
                 "\(system) cusp 7"
             )
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 result.cusps[9].eclipticLongitude,
                 result.angles.midheaven,
                 tolerance: 1e-7,
@@ -275,52 +276,52 @@ struct HouseSystemTests {
             )
 
             for index in 0..<6 {
-                let opposite = AstroCoreTestSupport.forwardArc(
+                let opposite = AstrologyTestSupport.forwardArc(
                     result.cusps[index].eclipticLongitude,
                     result.cusps[index + 6].eclipticLongitude
                 )
                 #expect(abs(opposite - 180.0) < 1e-7)
             }
 
-            AstroCoreTestSupport.expectCuspPartition(result.cusps)
+            AstrologyTestSupport.expectCuspPartition(result.cusps)
         }
     }
 
     @Test func meridianAndMorinusKeepTheirDistinctGeometry() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
+        let fixture = try AstrologyTestSupport.paris1995()
 
-        let meridian = try AstroCalculator.houses(
+        let meridian = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .meridian
         )
-        let morinus = try AstroCalculator.houses(
+        let morinus = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .morinus
         )
 
-        AstroCoreTestSupport.expectCuspPartition(meridian.cusps)
-        AstroCoreTestSupport.expectCuspPartition(morinus.cusps)
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCuspPartition(meridian.cusps)
+        AstrologyTestSupport.expectCuspPartition(morinus.cusps)
+        AstrologyTestSupport.expectCircularlyEqual(
             meridian.cusps[9].eclipticLongitude,
             meridian.angles.midheaven,
             tolerance: 1e-7
         )
         #expect(
-            AstroCoreTestSupport.circularDifference(
+            AstrologyTestSupport.circularDifference(
                 meridian.cusps[0].eclipticLongitude,
                 meridian.angles.ascendant
             ) > 1.0
         )
         #expect(
-            AstroCoreTestSupport.circularDifference(
+            AstrologyTestSupport.circularDifference(
                 morinus.cusps[0].eclipticLongitude,
                 morinus.angles.ascendant
             ) > 1.0
         )
         #expect(
-            AstroCoreTestSupport.circularDifference(
+            AstrologyTestSupport.circularDifference(
                 morinus.cusps[9].eclipticLongitude,
                 morinus.angles.midheaven
             ) > 0.1
@@ -328,8 +329,8 @@ struct HouseSystemTests {
     }
 
     @Test func horizontalUsesEastPointVertexAndMeridianAxes() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let horizontal = try AstroCalculator.houses(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let horizontal = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .horizontal
@@ -338,43 +339,43 @@ struct HouseSystemTests {
         let antivertex = AngleMath.normalized(
             degrees: (horizontal.angles.vertex ?? .nan) + 180.0
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             horizontal.cusps[0].eclipticLongitude,
             antivertex,
             tolerance: 1e-7,
             "horizontal cusp 1"
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             horizontal.cusps[3].eclipticLongitude,
             horizontal.angles.imumCoeli,
             tolerance: 1e-7,
             "horizontal cusp 4"
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             horizontal.cusps[6].eclipticLongitude,
             horizontal.angles.vertex ?? .nan,
             tolerance: 1e-7,
             "horizontal cusp 7"
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             horizontal.cusps[9].eclipticLongitude,
             horizontal.angles.midheaven,
             tolerance: 1e-7,
             "horizontal cusp 10"
         )
-        AstroCoreTestSupport.expectCuspPartition(horizontal.cusps)
+        AstrologyTestSupport.expectCuspPartition(horizontal.cusps)
     }
 
     @Test func horizontalMatchesReferenceFixture() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let horizontal = try AstroCalculator.houses(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let horizontal = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .horizontal
         )
 
         for (index, expected) in parisHorizontalCusps.enumerated() {
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 horizontal.cusps[index].eclipticLongitude,
                 expected,
                 tolerance: 3e-5,
@@ -384,41 +385,41 @@ struct HouseSystemTests {
     }
 
     @Test func carterUsesAscendantAnchoredRightAscensionGrid() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let carter = try AstroCalculator.houses(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let carter = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .carter
         )
         let obliquity = fixture.moment.trueObliquity
 
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             carter.cusps[0].eclipticLongitude,
             carter.angles.ascendant,
             tolerance: 1e-9
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             carter.cusps[6].eclipticLongitude,
             carter.angles.descendant,
             tolerance: 1e-9
         )
         #expect(
-            AstroCoreTestSupport.circularDifference(
+            AstrologyTestSupport.circularDifference(
                 carter.cusps[9].eclipticLongitude,
                 carter.angles.midheaven
             ) > 1.0
         )
 
-        let baseRightAscension = AstroCoreTestSupport.rightAscensionOnEcliptic(
+        let baseRightAscension = AstrologyTestSupport.rightAscensionOnEcliptic(
             longitude: carter.cusps[0].eclipticLongitude,
             obliquity: obliquity
         )
         for index in 1..<12 {
-            let rightAscension = AstroCoreTestSupport.rightAscensionOnEcliptic(
+            let rightAscension = AstrologyTestSupport.rightAscensionOnEcliptic(
                 longitude: carter.cusps[index].eclipticLongitude,
                 obliquity: obliquity
             )
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 rightAscension,
                 baseRightAscension + 30.0 * Double(index),
                 tolerance: 1e-7,
@@ -428,15 +429,15 @@ struct HouseSystemTests {
     }
 
     @Test func carterMatchesReferenceFixture() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let carter = try AstroCalculator.houses(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let carter = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .carter
         )
 
         for (index, expected) in parisCarterCusps.enumerated() {
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 carter.cusps[index].eclipticLongitude,
                 expected,
                 tolerance: 3e-5,
@@ -446,15 +447,15 @@ struct HouseSystemTests {
     }
 
     @Test func meridianMatchesAxialRotationReferenceFixture() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let meridian = try AstroCalculator.houses(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let meridian = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .meridian
         )
 
         for (index, expected) in parisMeridianCusps.enumerated() {
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 meridian.cusps[index].eclipticLongitude,
                 expected,
                 tolerance: 3e-5,
@@ -464,30 +465,30 @@ struct HouseSystemTests {
     }
 
     @Test func topocentricTracksPlacidusAndProjectionSystemsStayDistinct() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let topocentric = try AstroCalculator.houses(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let topocentric = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .topocentric
         )
-        let placidus = try AstroCalculator.houses(
+        let placidus = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .placidus
         )
-        let campanus = try AstroCalculator.houses(
+        let campanus = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .campanus
         )
-        let regiomontanus = try AstroCalculator.houses(
+        let regiomontanus = try AstrologyCalculator.houses(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             system: .regiomontanus
         )
 
         for index in [10, 11, 1, 2] {
-            let difference = AstroCoreTestSupport.circularDifference(
+            let difference = AstrologyTestSupport.circularDifference(
                 topocentric.cusps[index].eclipticLongitude,
                 placidus.cusps[index].eclipticLongitude
             )
@@ -498,7 +499,7 @@ struct HouseSystemTests {
         for index in [1, 2, 4, 5, 7, 8, 10, 11] {
             maxDifference = max(
                 maxDifference,
-                AstroCoreTestSupport.circularDifference(
+                AstrologyTestSupport.circularDifference(
                     campanus.cusps[index].eclipticLongitude,
                     regiomontanus.cusps[index].eclipticLongitude
                 )
@@ -518,7 +519,7 @@ struct HouseSystemTests {
         )
         let coordinate = try GeoCoordinate(latitude: 75.0, longitude: 0.0)
 
-        let placidus = try AstroCalculator.houses(
+        let placidus = try AstrologyCalculator.houses(
             for: moment,
             coordinate: coordinate,
             system: .placidus,
@@ -527,7 +528,7 @@ struct HouseSystemTests {
         #expect(placidus.resolvedSystem == .equalASC)
         #expect(!placidus.usedRequestedSystem)
 
-        let koch = try AstroCalculator.houses(
+        let koch = try AstrologyCalculator.houses(
             for: moment,
             coordinate: coordinate,
             system: .koch,
@@ -535,7 +536,7 @@ struct HouseSystemTests {
         )
         #expect(koch.resolvedSystem == .wholeSign)
 
-        let alcabitius = try AstroCalculator.houses(
+        let alcabitius = try AstrologyCalculator.houses(
             for: moment,
             coordinate: coordinate,
             system: .alcabitius,
@@ -543,11 +544,11 @@ struct HouseSystemTests {
         )
         #expect(alcabitius.resolvedSystem == .porphyry)
 
-        #expect(throws: AstroError.houseSystemUndefinedAtLatitude(
+        #expect(throws: AstrologyError.houseSystemUndefinedAtLatitude(
             system: .placidus,
             latitude: 75.0
         )) {
-            _ = try AstroCalculator.houses(
+            _ = try AstrologyCalculator.houses(
                 for: moment,
                 coordinate: coordinate,
                 system: .placidus,
@@ -555,7 +556,7 @@ struct HouseSystemTests {
             )
         }
 
-        let topocentric = try AstroCalculator.houses(
+        let topocentric = try AstrologyCalculator.houses(
             for: moment,
             coordinate: coordinate,
             system: .topocentric
@@ -564,30 +565,30 @@ struct HouseSystemTests {
     }
 
     @Test func gauquelinUsesIndependentClockwiseSectorModel() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let sectors = try AstroCalculator.gauquelinSectors(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let sectors = try AstrologyCalculator.gauquelinSectors(
             for: fixture.moment,
             coordinate: fixture.coordinate
         )
 
-        AstroCoreTestSupport.expectValidGauquelinSectors(sectors.sectors)
-        AstroCoreTestSupport.expectClockwiseSectorPartition(sectors.sectors)
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectValidGauquelinSectors(sectors.sectors)
+        AstrologyTestSupport.expectClockwiseSectorPartition(sectors.sectors)
+        AstrologyTestSupport.expectCircularlyEqual(
             sectors.sectors[0].eclipticLongitude,
             sectors.angles.ascendant,
             tolerance: 1e-9
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             sectors.sectors[9].eclipticLongitude,
             sectors.angles.midheaven,
             tolerance: 1e-9
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             sectors.sectors[18].eclipticLongitude,
             sectors.angles.descendant,
             tolerance: 1e-9
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             sectors.sectors[27].eclipticLongitude,
             sectors.angles.imumCoeli,
             tolerance: 1e-9
@@ -595,14 +596,14 @@ struct HouseSystemTests {
     }
 
     @Test func gauquelinMatchesReferenceFixture() throws {
-        let fixture = try AstroCoreTestSupport.paris1995()
-        let sectors = try AstroCalculator.gauquelinSectors(
+        let fixture = try AstrologyTestSupport.paris1995()
+        let sectors = try AstrologyCalculator.gauquelinSectors(
             for: fixture.moment,
             coordinate: fixture.coordinate
         )
 
         for (index, expected) in parisGauquelinSectors.enumerated() {
-            AstroCoreTestSupport.expectCircularlyEqual(
+            AstrologyTestSupport.expectCircularlyEqual(
                 sectors.sectors[index].eclipticLongitude,
                 expected,
                 tolerance: 3e-5,

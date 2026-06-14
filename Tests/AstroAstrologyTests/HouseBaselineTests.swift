@@ -1,4 +1,5 @@
-@testable import AstroCore
+@testable import AstroAstrology
+import AstroCore
 import Foundation
 import Testing
 
@@ -10,12 +11,12 @@ struct HouseBaselineTests {
         }
 
         let fixtures = try [
-            AstroCoreTestSupport.newYork1990(),
-            AstroCoreTestSupport.london2000(),
-            AstroCoreTestSupport.paris1995(),
-            AstroCoreTestSupport.sydney2010()
+            AstrologyTestSupport.newYork1990(),
+            AstrologyTestSupport.london2000(),
+            AstrologyTestSupport.paris1995(),
+            AstrologyTestSupport.sydney2010()
         ]
-        let snapshots = try AstroCoreTestSupport.referenceHouseSnapshots(
+        let snapshots = try AstrologyTestSupport.referenceHouseSnapshots(
             fixtures: fixtures,
             systems: HouseSystem.allCases,
             includeGauquelin: true
@@ -29,19 +30,19 @@ struct HouseBaselineTests {
 
             for system in HouseSystem.allCases {
                 guard let expected = snapshot.systems[
-                    AstroCoreTestSupport.referenceSystemCode(for: system)
+                    AstrologyTestSupport.referenceSystemCode(for: system)
                 ] else {
                     Issue.record("Missing reference data for \(system) at \(fixture.name)")
                     continue
                 }
 
-                let result = try AstroCalculator.houses(
+                let result = try AstrologyCalculator.houses(
                     for: fixture.moment,
                     coordinate: fixture.coordinate,
                     system: system
                 )
                 for (index, cusp) in result.cusps.enumerated() {
-                    AstroCoreTestSupport.expectCircularlyEqual(
+                    AstrologyTestSupport.expectCircularlyEqual(
                         cusp.eclipticLongitude,
                         expected[index],
                         tolerance: 3e-5,
@@ -54,12 +55,12 @@ struct HouseBaselineTests {
                 Issue.record("Missing Gauquelin data for \(fixture.name)")
                 continue
             }
-            let gauquelin = try AstroCalculator.gauquelinSectors(
+            let gauquelin = try AstrologyCalculator.gauquelinSectors(
                 for: fixture.moment,
                 coordinate: fixture.coordinate
             )
             for (index, sector) in gauquelin.sectors.enumerated() {
-                AstroCoreTestSupport.expectCircularlyEqual(
+                AstrologyTestSupport.expectCircularlyEqual(
                     sector.eclipticLongitude,
                     expectedSectors[index],
                     tolerance: 3e-5,

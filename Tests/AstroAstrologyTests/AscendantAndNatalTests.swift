@@ -1,4 +1,5 @@
-@testable import AstroCore
+@testable import AstroAstrology
+import AstroCore
 import Foundation
 import Testing
 
@@ -43,20 +44,20 @@ struct AscendantAndNatalTests {
             longitude: testCase.longitude
         )
 
-        let result = try AstroCalculator.ascendant(for: moment, coordinate: coordinate)
+        let result = try AstrologyCalculator.ascendant(for: moment, coordinate: coordinate)
         #expect(abs(result.eclipticLongitude - testCase.expectedLongitude) < testCase.tolerance)
         #expect(result.sign == testCase.expectedSign)
         #expect(result.degreeInSign >= 0.0 && result.degreeInSign < 30.0)
-        AstroCoreTestSupport.expectValidLongitude(result.eclipticLongitude)
+        AstrologyTestSupport.expectValidLongitude(result.eclipticLongitude)
     }
 
     @Test func ascendantSupportsSouthernHemisphereAndDateLineConsistency() throws {
-        let sydney = try AstroCoreTestSupport.sydney2010()
-        let sydneyAscendant = try AstroCalculator.ascendant(
+        let sydney = try AstrologyTestSupport.sydney2010()
+        let sydneyAscendant = try AstrologyCalculator.ascendant(
             for: sydney.moment,
             coordinate: sydney.coordinate
         )
-        AstroCoreTestSupport.expectValidLongitude(sydneyAscendant.eclipticLongitude)
+        AstrologyTestSupport.expectValidLongitude(sydneyAscendant.eclipticLongitude)
 
         let moment = try CivilMoment(
             year: 2000,
@@ -68,10 +69,10 @@ struct AscendantAndNatalTests {
         )
         let west = try GeoCoordinate(latitude: 0.0, longitude: 180.0)
         let east = try GeoCoordinate(latitude: 0.0, longitude: -180.0)
-        let western = try AstroCalculator.ascendant(for: moment, coordinate: west)
-        let eastern = try AstroCalculator.ascendant(for: moment, coordinate: east)
+        let western = try AstrologyCalculator.ascendant(for: moment, coordinate: west)
+        let eastern = try AstrologyCalculator.ascendant(for: moment, coordinate: east)
 
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             AstroCalculator.localSiderealTimeDegrees(
                 for: moment,
                 longitude: west.longitude
@@ -82,7 +83,7 @@ struct AscendantAndNatalTests {
             ),
             tolerance: 0.001
         )
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             western.eclipticLongitude,
             eastern.eclipticLongitude,
             tolerance: 1e-9
@@ -100,12 +101,12 @@ struct AscendantAndNatalTests {
         )
 
         let valid = try GeoCoordinate(latitude: 84.9, longitude: 0.0)
-        let result = try AstroCalculator.ascendant(for: moment, coordinate: valid)
-        AstroCoreTestSupport.expectValidLongitude(result.eclipticLongitude)
+        let result = try AstrologyCalculator.ascendant(for: moment, coordinate: valid)
+        AstrologyTestSupport.expectValidLongitude(result.eclipticLongitude)
 
         let invalid = try GeoCoordinate(latitude: 85.1, longitude: 0.0)
-        #expect(throws: AstroError.extremeLatitude) {
-            try AstroCalculator.ascendant(for: moment, coordinate: invalid)
+        #expect(throws: AstrologyError.core(.extremeLatitude)) {
+            try AstrologyCalculator.ascendant(for: moment, coordinate: invalid)
         }
     }
 
@@ -119,8 +120,8 @@ struct AscendantAndNatalTests {
             timeZoneIdentifier: "UTC"
         )
 
-        #expect(throws: AstroError.missingCoordinateForAscendant) {
-            _ = try AstroCalculator.natalPositions(
+        #expect(throws: AstrologyError.missingCoordinateForAscendant) {
+            _ = try AstrologyCalculator.natalPositions(
                 for: moment,
                 bodies: [.sun],
                 includeAscendant: true
@@ -138,11 +139,11 @@ struct AscendantAndNatalTests {
             timeZoneIdentifier: "UTC"
         )
 
-        let empty = try AstroCalculator.natalPositions(for: moment, bodies: [])
+        let empty = try AstrologyCalculator.natalPositions(for: moment, bodies: [])
         #expect(empty.bodies.isEmpty)
         #expect(empty.ascendant == nil)
 
-        let subset = try AstroCalculator.natalPositions(
+        let subset = try AstrologyCalculator.natalPositions(
             for: moment,
             bodies: [.sun, .moon]
         )
@@ -153,17 +154,17 @@ struct AscendantAndNatalTests {
     }
 
     @Test func natalPositionsMatchSingleBodyCalculations() throws {
-        let fixture = try AstroCoreTestSupport.newYork1990()
+        let fixture = try AstrologyTestSupport.newYork1990()
 
         let sun = AstroCalculator.sunPosition(for: fixture.moment)
         let moon = AstroCalculator.moonPosition(for: fixture.moment)
         let mercury = AstroCalculator.planetPosition(.mercury, for: fixture.moment)
-        let ascendant = try AstroCalculator.ascendant(
+        let ascendant = try AstrologyCalculator.ascendant(
             for: fixture.moment,
             coordinate: fixture.coordinate
         )
 
-        let natal = try AstroCalculator.natalPositions(
+        let natal = try AstrologyCalculator.natalPositions(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             bodies: [.sun, .moon, .mercury],
@@ -176,10 +177,37 @@ struct AscendantAndNatalTests {
         #expect(natal.ascendant == ascendant)
     }
 
-    @Test func natalChartCombinesPositionsHousesAndContext() throws {
-        let fixture = try AstroCoreTestSupport.newYork1990()
+    @Test func natalStatesMatchPositionsAndSingleBodyMotion() throws {
+        let fixture = try AstrologyTestSupport.newYork1990()
+        let bodies: Set<CelestialBody> = [.sun, .moon, .mercury]
 
-        let chart = try AstroCalculator.natalChart(
+        let positions = try AstrologyCalculator.natalPositions(
+            for: fixture.moment,
+            coordinate: fixture.coordinate,
+            bodies: bodies,
+            includeAscendant: true
+        )
+        let states = try AstrologyCalculator.natalStates(
+            for: fixture.moment,
+            coordinate: fixture.coordinate,
+            bodies: bodies,
+            includeAscendant: true
+        )
+
+        #expect(states.ascendant == positions.ascendant)
+        #expect(states.bodies.count == positions.bodies.count)
+        for body in bodies {
+            let state = try #require(states.bodies[body])
+            #expect(state.position == positions.bodies[body])
+            let single = AstroCalculator.celestialState(body, for: fixture.moment)
+            #expect(abs(state.speed - single.speed) < 1e-12)
+        }
+    }
+
+    @Test func natalChartCombinesPositionsHousesAndContext() throws {
+        let fixture = try AstrologyTestSupport.newYork1990()
+
+        let chart = try AstrologyCalculator.natalChart(
             for: fixture.moment,
             coordinate: fixture.coordinate,
             bodies: Set(CelestialBody.allCases),
@@ -192,7 +220,7 @@ struct AscendantAndNatalTests {
         #expect(chart.houses.resolvedSystem == .placidus)
         #expect(chart.moment == fixture.moment)
         #expect(chart.coordinate == fixture.coordinate)
-        AstroCoreTestSupport.expectCircularlyEqual(
+        AstrologyTestSupport.expectCircularlyEqual(
             chart.positions.ascendant?.eclipticLongitude ?? -1.0,
             chart.houses.angles.ascendant,
             tolerance: 1e-9
