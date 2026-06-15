@@ -112,4 +112,66 @@ struct AspectMatrixTests {
         let decoded = try JSONDecoder().decode(AspectGrid.self, from: data)
         #expect(decoded == grid)
     }
+
+    // MARK: - A5f cross-chart aspects + NatalAspects
+
+    @Test func crossGridComparesFullProduct() throws {
+        let moment = try Self.momentJ2000()
+        let natal = AstroCalculator.states(of: [.sun, .moon, .mars], at: moment)
+        let transit = AstroCalculator.states(of: [.jupiter, .saturn], at: moment)
+        let result = AspectEngine.crossGrid(
+            natal: natal, transit: transit,
+            aspectKinds: AspectKind.ptolemaic, orbPolicy: .default
+        )
+        #expect(result.comparisons == 6)
+    }
+
+    @Test func crossAspectsSelfUpperTriangleEqualsGrid() throws {
+        let moment = try Self.momentJ2000()
+        let bodies: Set<CelestialBody> = [.sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn]
+        let states = AstroCalculator.states(of: bodies, at: moment)
+        let cross = AstrologyCalculator.crossAspects(
+            natal: states, transit: states, aspectKinds: Set(AspectKind.allCases)
+        )
+        let grid = AstrologyCalculator.aspects(among: states, aspectKinds: Set(AspectKind.allCases))
+        let upper = cross.aspects.filter {
+            (AspectEngine.bodyOrder[$0.bodyA] ?? -1) < (AspectEngine.bodyOrder[$0.bodyB] ?? -1)
+        }
+        #expect(Set(upper) == Set(grid.aspects))
+    }
+
+    @Test func crossAspectsIncludeSameBodyReturn() {
+        let natal: [CelestialBody: CelestialState] = [
+            .sun: CelestialState(body: .sun, longitude: 100, latitude: 0, speed: 1)
+        ]
+        let transit: [CelestialBody: CelestialState] = [
+            .sun: CelestialState(body: .sun, longitude: 100.5, latitude: 0, speed: 1)
+        ]
+        let cross = AstrologyCalculator.crossAspects(natal: natal, transit: transit)
+        #expect(cross.aspects.count == 1)
+        #expect(cross.aspects.first?.kind == .conjunction)
+        #expect(cross.aspects.first?.bodyA == .sun)
+        #expect(cross.aspects.first?.bodyB == .sun)
+    }
+
+    @Test func natalAspectsProducerAssemblesGridAndAscendant() throws {
+        let fixture = try AstrologyTestSupport.newYork1990()
+        let result = try AstrologyCalculator.natalAspects(
+            for: fixture.moment, coordinate: fixture.coordinate,
+            bodies: [.sun, .moon, .mercury, .venus, .mars], includeAscendant: true
+        )
+        #expect(result.ascendant != nil)
+        #expect(result.states.count == 5)
+        #expect(result.grid == AstrologyCalculator.aspects(among: result.states))
+    }
+
+    @Test func natalAspectsRoundTripsThroughJSON() throws {
+        let fixture = try AstrologyTestSupport.newYork1990()
+        let result = try AstrologyCalculator.natalAspects(
+            for: fixture.moment, bodies: [.sun, .moon, .mercury, .venus, .mars, .jupiter]
+        )
+        let data = try JSONEncoder().encode(result)
+        let decoded = try JSONDecoder().decode(NatalAspects.self, from: data)
+        #expect(decoded == result)
+    }
 }

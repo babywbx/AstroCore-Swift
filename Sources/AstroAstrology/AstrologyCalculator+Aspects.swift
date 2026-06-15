@@ -43,4 +43,39 @@ extension AstrologyCalculator {
             among: states, aspectKinds: aspectKinds, orbPolicy: orbPolicy
         ).grid
     }
+
+    /// Synastry / transit cross-set aspects: every natal body against every transit body.
+    /// Applying uses both states' speeds (relSpeed = transit − natal).
+    public static func crossAspects(
+        natal natalStates: [CelestialBody: CelestialState],
+        transit transitStates: [CelestialBody: CelestialState],
+        aspectKinds: Set<AspectKind> = AspectKind.ptolemaic,
+        orbPolicy: OrbPolicy = .default
+    ) -> AspectGrid {
+        AspectEngine.crossGrid(
+            natal: natalStates, transit: transitStates,
+            aspectKinds: aspectKinds, orbPolicy: orbPolicy
+        ).grid
+    }
+
+    /// One-step natal aspect table: motion-rich states + grid + optional zodiac ascendant.
+    public static func natalAspects(
+        for moment: CivilMoment,
+        coordinate: GeoCoordinate? = nil,
+        bodies: Set<CelestialBody> = [],
+        includeAscendant: Bool = false,
+        aspectKinds: Set<AspectKind> = AspectKind.ptolemaic,
+        orbPolicy: OrbPolicy = .default
+    ) throws(AstrologyError) -> NatalAspects {
+        var asc: AscendantResult?
+        if includeAscendant {
+            guard let coordinate else { throw .missingCoordinateForAscendant }
+            asc = try ascendant(for: moment, coordinate: coordinate)
+        }
+        let states = AstroCalculator.states(of: bodies, at: moment)
+        let grid = AspectEngine.buildGrid(
+            among: states, aspectKinds: aspectKinds, orbPolicy: orbPolicy
+        ).grid
+        return NatalAspects(states: states, grid: grid, ascendant: asc)
+    }
 }

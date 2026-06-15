@@ -102,4 +102,40 @@ enum AspectEngine {
         let states = statesProvider(bodies, moment)
         return buildGrid(among: states, aspectKinds: aspectKinds, orbPolicy: orbPolicy)
     }
+
+    /// Asymmetric M×N cross-set grid (synastry / transit): every natal body against every transit body.
+    /// bodyA = natal, bodyB = transit; no canonical reorder, no same-body skip.
+    static func crossGrid(
+        natal: [CelestialBody: CelestialState],
+        transit: [CelestialBody: CelestialState],
+        aspectKinds: Set<AspectKind>,
+        orbPolicy: OrbPolicy
+    ) -> (grid: AspectGrid, comparisons: Int) {
+        let natalEntries = natal.sorted { (bodyOrder[$0.key] ?? 0) < (bodyOrder[$1.key] ?? 0) }
+        let transitEntries = transit.sorted { (bodyOrder[$0.key] ?? 0) < (bodyOrder[$1.key] ?? 0) }
+
+        var matched: [Aspect] = []
+        matched.reserveCapacity(natalEntries.count * transitEntries.count)
+        var comparisons = 0
+        for natalEntry in natalEntries {
+            for transitEntry in transitEntries {
+                comparisons += 1
+                if let aspect = resolveOrdered(
+                    bodyA: natalEntry.key,
+                    longitudeA: natalEntry.value.longitude,
+                    speedA: natalEntry.value.speed,
+                    bodyB: transitEntry.key,
+                    longitudeB: transitEntry.value.longitude,
+                    speedB: transitEntry.value.speed,
+                    aspectKinds: aspectKinds,
+                    orbPolicy: orbPolicy
+                ) {
+                    matched.append(aspect)
+                }
+            }
+        }
+        let axis = Set(natal.keys).union(transit.keys)
+            .sorted { (bodyOrder[$0] ?? 0) < (bodyOrder[$1] ?? 0) }
+        return (AspectGrid(bodies: axis, aspects: matched), comparisons)
+    }
 }
