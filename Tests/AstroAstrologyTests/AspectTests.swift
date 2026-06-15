@@ -106,4 +106,79 @@ struct AspectTests {
         let decoded = try JSONDecoder().decode(AspectGrid.self, from: data)
         #expect(decoded == grid)
     }
+
+    // MARK: - A5b core geometry primitives
+
+    @Test func aspectSeparationIsSignedDeviationAndWrapsAround() {
+        // Conjunction (φ=0): deviation == shortest-arc separation, sign carried.
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 10, longitudeB: 10, aspectAngleDegrees: 0) == 0)
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 10, longitudeB: 13, aspectAngleDegrees: 0) == 3)
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 10, longitudeB: 7, aspectAngleDegrees: 0) == 3)
+        // Wrap-around across 0/360.
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 350, longitudeB: 10, aspectAngleDegrees: 0) == 20)
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 10, longitudeB: 350, aspectAngleDegrees: 0) == 20)
+        // Trine (φ=120) reached from either 120 or 240 shortest arc.
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 0, longitudeB: 120, aspectAngleDegrees: 120) == 0)
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 0, longitudeB: 240, aspectAngleDegrees: 120) == 0)
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 0, longitudeB: 121, aspectAngleDegrees: 120) == 1)
+        // Opposition (φ=180) at 180 is single-valued, deviation 0 (not double counted).
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 0, longitudeB: 180, aspectAngleDegrees: 180) == 0)
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 0, longitudeB: 175, aspectAngleDegrees: 180) == -5)
+        #expect(AstroCalculator.aspectSeparation(longitudeA: 0, longitudeB: 185, aspectAngleDegrees: 180) == -5)
+    }
+
+    @Test func aspectSeparationMagnitudeIsSymmetric() {
+        for (a, b) in [(350.0, 10.0), (10.0, 350.0), (0.0, 200.0), (200.0, 0.0)] {
+            let ab = AstroCalculator.aspectSeparation(longitudeA: a, longitudeB: b, aspectAngleDegrees: 90)
+            let ba = AstroCalculator.aspectSeparation(longitudeA: b, longitudeB: a, aspectAngleDegrees: 90)
+            #expect(abs(ab) == abs(ba))
+        }
+    }
+
+    @Test func closingRateSignContractProgradeApproachingAndSeparating() {
+        // Prograde: B behind A and faster -> applying toward conjunction.
+        let applying = AstroCalculator.aspectClosingRate(
+            speedA: 1, speedB: 2, longitudeA: 10, longitudeB: 7, aspectAngleDegrees: 0
+        )
+        #expect(applying > 0)
+        // Prograde: B ahead of A and faster -> separating from conjunction.
+        let separating = AstroCalculator.aspectClosingRate(
+            speedA: 1, speedB: 2, longitudeA: 10, longitudeB: 13, aspectAngleDegrees: 0
+        )
+        #expect(separating < 0)
+    }
+
+    @Test func closingRateRetrogradeMovesTowardAspect() {
+        // B retrograde back toward A while A advances -> applying.
+        let rate = AstroCalculator.aspectClosingRate(
+            speedA: 1, speedB: -1, longitudeA: 10, longitudeB: 13, aspectAngleDegrees: 0
+        )
+        #expect(rate > 0)
+    }
+
+    @Test func closingRateIsZeroAtExactAspect() {
+        #expect(
+            AstroCalculator.aspectClosingRate(
+                speedA: 0, speedB: 1, longitudeA: 10, longitudeB: 10, aspectAngleDegrees: 0
+            ) == 0
+        )
+        #expect(
+            AstroCalculator.aspectClosingRate(
+                speedA: 0, speedB: 1, longitudeA: 0, longitudeB: 180, aspectAngleDegrees: 180
+            ) == 0
+        )
+    }
+
+    @Test func closingRateStaysConsistentAcrossOppositionPoint() {
+        // Approaching opposition from below (B rising toward 180) -> applying.
+        let beforePoint = AstroCalculator.aspectClosingRate(
+            speedA: 0, speedB: 1, longitudeA: 0, longitudeB: 175, aspectAngleDegrees: 180
+        )
+        #expect(beforePoint > 0)
+        // Just past opposition (B rising beyond 180) -> separating.
+        let afterPoint = AstroCalculator.aspectClosingRate(
+            speedA: 0, speedB: 1, longitudeA: 0, longitudeB: 185, aspectAngleDegrees: 180
+        )
+        #expect(afterPoint < 0)
+    }
 }
