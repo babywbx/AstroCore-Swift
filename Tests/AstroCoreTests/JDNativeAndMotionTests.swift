@@ -67,6 +67,29 @@ struct JDNativeAndMotionTests {
         }
     }
 
+    @Test func retrogradeSignMatchesKnownWindows() throws {
+        let cases: [(CelestialBody, Int, Int, Int, Bool)] = [
+            (.mercury, 2020, 10, 20, true),
+            (.mercury, 2020, 12, 1, false),
+            (.mars, 2020, 10, 13, true),
+            (.mars, 2021, 1, 1, false),
+            (.jupiter, 2020, 7, 15, true),
+            (.jupiter, 2020, 10, 15, false)
+        ]
+
+        for (body, year, month, day, expectedRetrograde) in cases {
+            let moment = try CivilMoment(
+                year: year, month: month, day: day, hour: 12, minute: 0,
+                timeZoneIdentifier: "UTC"
+            )
+            let state = AstroCalculator.celestialState(body, for: moment)
+            #expect(
+                state.isRetrograde == expectedRetrograde,
+                "\(body) \(year)-\(month)-\(day) speed=\(state.speed)"
+            )
+        }
+    }
+
     @Test func axisPrimitivesMatchPublicCalculatorWrappers() throws {
         let moment = try CivilMoment(
             year: 1990, month: 8, day: 15, hour: 14, minute: 30,
