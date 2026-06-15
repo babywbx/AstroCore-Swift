@@ -23,11 +23,11 @@ struct EquationOfTimeTests {
         #expect(try abs(AstroCalculator.equationOfTime(julianDayUT: jdUT(2000, 12, 25))) < 1.5)
     }
 
-    // TODO(a4d): fill from local reference capture (controller will drive). MEASURED, NOT FABRICATED.
-    // EoT (minutes, apparent − mean) at 12:00 UTC; tolerance set at capture.
-    // @Test func matchesIndependentAnchors() throws {
-    //     let tol = MEASURED_TOL_MIN
-    //     #expect(abs(AstroCalculator.equationOfTime(julianDayUT: try jdUT(2000, 1, 13)) - MEASURED_EOT_0113) < tol)
-    //     #expect(abs(AstroCalculator.equationOfTime(julianDayUT: try jdUT(2000, 7, 15)) - MEASURED_EOT_0715) < tol)
-    // }
+    /// EoT (minutes, apparent − mean) at 12:00 UTC from a local reference ephemeris. MEASURED, NOT FABRICATED.
+    /// Tolerance reflects measured agreement; the small gap is the expected method/ΔUT1 difference.
+    @Test func matchesIndependentAnchors() throws {
+        let tol = 0.05
+        #expect(try abs(AstroCalculator.equationOfTime(julianDayUT: jdUT(2000, 1, 13)) + 8.4775) < tol)
+        #expect(try abs(AstroCalculator.equationOfTime(julianDayUT: jdUT(2000, 7, 15)) + 5.9759) < tol)
+    }
 }
