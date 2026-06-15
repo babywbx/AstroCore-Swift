@@ -105,4 +105,16 @@ struct BenchmarkTests {
         }
         print("🌗  Moon illumination: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
     }
+
+    @Test func benchmarkEquationOfTime() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 1, day: 13, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        let jd = AstroCalculator.julianDayUT(for: moment)
+        let iterations = 2000
+        let result = benchmark(iterations: iterations) {
+            _ = AstroCalculator.equationOfTime(julianDayUT: jd)
+        }
+        print("⏱️  Equation of time: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
+    }
 }
