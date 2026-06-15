@@ -31,23 +31,22 @@ struct DerivedCoordinateTests {
         }
     }
 
-    // TODO(a4a): fill RA/Dec from local reference capture (controller will drive). Keep commented until then.
-    // Independent anchors captured from local reference tooling (apparent geocentric RA/Dec of date).
-    // VALUES ARE MEASURED, NOT FABRICATED. Tolerance = 2 arcseconds.
-    // @Test func equatorialMatchesIndependentAnchors() throws {
-    //     let moment = try j2000()
-    //     let twoArcsec = 2.0 / 3600.0
-    //     let anchors: [(CelestialBody, Double, Double)] = [
-    //         (.sun, MEASURED_SUN_RA, MEASURED_SUN_DEC),
-    //         (.moon, MEASURED_MOON_RA, MEASURED_MOON_DEC),
-    //         (.mars, MEASURED_MARS_RA, MEASURED_MARS_DEC)
-    //     ]
-    //     for (body, ra, dec) in anchors {
-    //         let eq = AstroCalculator.equatorial(of: body, at: moment)
-    //         AstroCoreTestSupport.expectCircularlyEqual(eq.rightAscension, ra, tolerance: twoArcsec, "\(body) ra")
-    //         #expect(abs(eq.declination - dec) < twoArcsec)
-    //     }
-    // }
+    /// Independent anchors captured from local reference tooling (apparent geocentric RA/Dec of date).
+    /// VALUES ARE MEASURED, NOT FABRICATED. Tolerance = 2 arcseconds.
+    @Test func equatorialMatchesIndependentAnchors() throws {
+        let moment = try j2000()
+        let twoArcsec = 2.0 / 3600.0
+        let anchors: [(CelestialBody, Double, Double)] = [
+            (.sun, 281.278380, -23.032430),
+            (.moon, 222.452200, -10.900650),
+            (.mars, 330.516800, -13.182480)
+        ]
+        for (body, ra, dec) in anchors {
+            let eq = AstroCalculator.equatorial(of: body, at: moment)
+            AstroCoreTestSupport.expectCircularlyEqual(eq.rightAscension, ra, tolerance: twoArcsec, "\(body) ra")
+            #expect(abs(eq.declination - dec) < twoArcsec)
+        }
+    }
 
     private let heliocentricRadiusRanges: [(CelestialBody, ClosedRange<Double>)] = [
         (.mercury, 0.30...0.48), (.venus, 0.71...0.74), (.mars, 1.36...1.68),
@@ -72,12 +71,12 @@ struct DerivedCoordinateTests {
         }
     }
 
-    // TODO(a4a): fill from local reference capture (controller will drive). MEASURED, NOT FABRICATED.
-    // @Test func heliocentricMatchesIndependentAnchor() throws {
-    //     let moment = try j2000()
-    //     let helio = try #require(AstroCalculator.heliocentric(of: .jupiter, at: moment))
-    //     AstroCoreTestSupport.expectCircularlyEqual(helio.longitude, MEASURED_JUP_HELIO_LON, tolerance: 2.0 / 3600.0, "jup helio lon")
-    //     #expect(abs(helio.latitude - MEASURED_JUP_HELIO_LAT) < 2.0 / 3600.0)
-    //     #expect(abs(helio.distance - MEASURED_JUP_HELIO_R) < 0.00001)
-    // }
+    /// MEASURED, NOT FABRICATED.
+    @Test func heliocentricMatchesIndependentAnchor() throws {
+        let moment = try j2000()
+        let helio = try #require(AstroCalculator.heliocentric(of: .jupiter, at: moment))
+        AstroCoreTestSupport.expectCircularlyEqual(helio.longitude, 36.294594, tolerance: 2.0 / 3600.0, "jup helio lon")
+        #expect(abs(helio.latitude - -1.174588) < 2.0 / 3600.0)
+        #expect(abs(helio.distance - 4.96538103) < 0.00001)
+    }
 }
