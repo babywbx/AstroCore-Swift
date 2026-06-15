@@ -181,4 +181,76 @@ struct AspectTests {
         )
         #expect(afterPoint < 0)
     }
+
+    // MARK: - A5c single-pair resolution (engine + overlay)
+
+    @Test func aspectEngineDetectsExactApplyingConjunction() {
+        let sun = CelestialState(body: .sun, longitude: 100, latitude: 0, speed: 1)
+        let moon = CelestialState(body: .moon, longitude: 99.5, latitude: 0, speed: 13)
+        let aspect = AspectEngine.resolve(
+            sun, moon, aspectKinds: AspectKind.ptolemaic, orbPolicy: .default
+        )
+        #expect(aspect?.kind == .conjunction)
+        #expect(aspect?.bodyA == .sun)
+        #expect(aspect?.bodyB == .moon)
+        #expect(abs((aspect?.deviation ?? .nan) - 0.5) < 1e-9)
+        #expect(aspect?.isExact == true)
+        #expect(aspect?.isApplying == true)
+    }
+
+    @Test func aspectEngineRejectsSeparationOutsideEveryOrb() {
+        let sun = CelestialState(body: .sun, longitude: 0, latitude: 0, speed: 1)
+        let mars = CelestialState(body: .mars, longitude: 9, latitude: 0, speed: 0.5)
+        let aspect = AspectEngine.resolve(
+            sun, mars, aspectKinds: AspectKind.ptolemaic, orbPolicy: .default
+        )
+        #expect(aspect == nil)
+    }
+
+    @Test func aspectEnginePicksClosestKindWhenOrbsOverlap() {
+        let policy = OrbPolicy(baseOrbs: [.conjunction: 20, .semisextile: 20])
+        let sun = CelestialState(body: .sun, longitude: 0, latitude: 0, speed: 1)
+        let venus = CelestialState(body: .venus, longitude: 16, latitude: 0, speed: 1)
+        let aspect = AspectEngine.resolve(
+            sun, venus, aspectKinds: [.conjunction, .semisextile], orbPolicy: policy
+        )
+        #expect(aspect?.kind == .semisextile)
+    }
+
+    @Test func aspectEngineResolutionIsOrderIndependent() {
+        let sun = CelestialState(body: .sun, longitude: 10, latitude: 0, speed: 1)
+        let jupiter = CelestialState(body: .jupiter, longitude: 130, latitude: 0, speed: 0.1)
+        let forward = AspectEngine.resolve(sun, jupiter, aspectKinds: AspectKind.ptolemaic, orbPolicy: .default)
+        let reverse = AspectEngine.resolve(jupiter, sun, aspectKinds: AspectKind.ptolemaic, orbPolicy: .default)
+        #expect(forward == reverse)
+        #expect(forward?.kind == .trine)
+        #expect(forward?.bodyA == .sun)
+    }
+
+    @Test func aspectEngineRejectsSelfPair() {
+        let sun = CelestialState(body: .sun, longitude: 10, latitude: 0, speed: 1)
+        #expect(AspectEngine.resolve(sun, sun, aspectKinds: AspectKind.ptolemaic, orbPolicy: .default) == nil)
+    }
+
+    @Test func singlePairOverlayReturnsNilForSameBody() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        #expect(try AstrologyCalculator.aspect(between: .sun, and: .sun, for: moment) == nil)
+    }
+
+    @Test func singlePairOverlayMatchesEngineOnStates() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 1, day: 1, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        let states = AstroCalculator.states(of: [.sun, .mars], at: moment)
+        let sunState = try #require(states[.sun])
+        let marsState = try #require(states[.mars])
+        let expected = AspectEngine.resolve(
+            sunState, marsState,
+            aspectKinds: AspectKind.ptolemaic, orbPolicy: .default
+        )
+        let actual = try AstrologyCalculator.aspect(between: .sun, and: .mars, for: moment)
+        #expect(actual == expected)
+    }
 }
