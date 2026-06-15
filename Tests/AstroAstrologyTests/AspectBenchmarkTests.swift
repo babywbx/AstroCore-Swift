@@ -84,11 +84,12 @@ struct AspectBenchmarkTests {
         let moonResult = benchmark(iterations: 50, warmup: 5) {
             _ = AstroCalculator.exactAspectJulianDayTT(of: .sun, and: .moon, aspectAngleDegrees: 0, nearJulianDayTT: seed)
         }
-        print("exact moment [Sun-Moon conjunction]: \(formatMicroseconds(moonResult.perCallMicroseconds)) µs/call")
-        let slowResult = benchmark(iterations: 50, warmup: 5) {
+        print("exact moment [Sun-Moon conjunction, root nearby]: \(formatMicroseconds(moonResult.perCallMicroseconds)) µs/call")
+        // No Saturn-Pluto sextile near J2000: worst case, must scan the whole window to prove nil.
+        let emptyResult = benchmark(iterations: 50, warmup: 5) {
             _ = AstroCalculator.exactAspectJulianDayTT(of: .saturn, and: .pluto, aspectAngleDegrees: 60, nearJulianDayTT: seed)
         }
-        print("exact moment [Saturn-Pluto sextile]: \(formatMicroseconds(slowResult.perCallMicroseconds)) µs/call")
+        print("exact moment [no aspect in window, full scan]: \(formatMicroseconds(emptyResult.perCallMicroseconds)) µs/call")
     }
 
     @Test func benchmarkCrossChartAspects() throws {

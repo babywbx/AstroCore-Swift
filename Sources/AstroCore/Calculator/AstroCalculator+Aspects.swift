@@ -53,12 +53,13 @@ extension AstroCalculator {
         var nearest: Double?
         var nearestDistance = Double.infinity
         for target in targets {
-            for root in aspectRoots(bodyA, bodyB, target: target, near: jd, window: window) {
-                let distance = abs(root - jd)
-                if distance < nearestDistance {
-                    nearestDistance = distance
-                    nearest = root
-                }
+            guard let root = nearestAspectRoot(
+                bodyA, bodyB, target: target, near: jd, window: window
+            ) else { continue }
+            let distance = abs(root - jd)
+            if distance < nearestDistance {
+                nearestDistance = distance
+                nearest = root
             }
         }
         return nearest
@@ -114,41 +115,74 @@ extension AstroCalculator {
         longitudeSpeed(of: bodyB, julianDayTT: jdTT) - longitudeSpeed(of: bodyA, julianDayTT: jdTT)
     }
 
-    /// All TT roots of the residual in [jd − window, jd + window] for one target angle.
-    private static func aspectRoots(
+    /// Nearest TT root of the residual to `jd` within ±window for one target angle. Expands the
+    /// search symmetrically outward and stops once no closer root can remain on either side.
+    private static func nearestAspectRoot(
         _ bodyA: CelestialBody, _ bodyB: CelestialBody,
         target: Double, near jd: Double, window: Double
-    ) -> [Double] {
+    ) -> Double? {
         let relSpeed = abs(aspectResidualSlope(bodyA, bodyB, jdTT: jd))
         let rawStep = aspectSamplingArcDegrees / (2.0 * max(relSpeed, 1e-6))
         let step = min(max(rawStep, aspectMinStepDays), 2.0 * window / aspectMaxSamplesDivisor)
-        let start = jd - window
-        let end = jd + window
 
-        var roots: [Double] = []
-        var previousT = start
-        var previousG = aspectResidual(bodyA, bodyB, target: target, jdTT: previousT)
-        if abs(previousG) < aspectRootTolDegrees { roots.append(previousT) }
+        let seedG = aspectResidual(bodyA, bodyB, target: target, jdTT: jd)
+        if abs(seedG) < aspectRootTolDegrees { return jd }
 
-        var t = start + step
-        while t <= end + 0.5 * step {
-            let clamped = min(t, end)
-            let g = aspectResidual(bodyA, bodyB, target: target, jdTT: clamped)
-            let crossesZero = (previousG < 0) != (g < 0)
-            let notWrapJump = abs(g - previousG) < 180.0
-            if abs(g) < aspectRootTolDegrees {
-                roots.append(clamped)
-            } else if previousG != 0, crossesZero, notWrapJump {
-                roots.append(refineAspectRoot(
+        var best: Double?
+        var bestDistance = Double.infinity
+        let forwardLimit = jd + window
+        let backwardLimit = jd - window
+        var forwardT = jd, forwardG = seedG, forwardActive = true
+        var backwardT = jd, backwardG = seedG, backwardActive = true
+        var shell = 1
+
+        while forwardActive || backwardActive {
+            if forwardActive {
+                let next = min(forwardT + step, forwardLimit)
+                let g = aspectResidual(bodyA, bodyB, target: target, jdTT: next)
+                if let root = bracketRoot(
                     bodyA, bodyB, target: target,
-                    low: previousT, high: clamped, gLow: previousG, gHigh: g
-                ))
+                    low: forwardT, high: next, gLow: forwardG, gHigh: g
+                ), abs(root - jd) < bestDistance {
+                    bestDistance = abs(root - jd)
+                    best = root
+                }
+                if next >= forwardLimit { forwardActive = false }
+                forwardT = next
+                forwardG = g
             }
-            previousT = clamped
-            previousG = g
-            t += step
+            if backwardActive {
+                let next = max(backwardT - step, backwardLimit)
+                let g = aspectResidual(bodyA, bodyB, target: target, jdTT: next)
+                if let root = bracketRoot(
+                    bodyA, bodyB, target: target,
+                    low: next, high: backwardT, gLow: g, gHigh: backwardG
+                ), abs(root - jd) < bestDistance {
+                    bestDistance = abs(root - jd)
+                    best = root
+                }
+                if next <= backwardLimit { backwardActive = false }
+                backwardT = next
+                backwardG = g
+            }
+            if best != nil, Double(shell) * step >= bestDistance { break }
+            shell += 1
         }
-        return dedupedRoots(roots)
+        return best
+    }
+
+    /// A refined root inside one sampling interval, or nil when no real (non-wrap) crossing sits there.
+    private static func bracketRoot(
+        _ bodyA: CelestialBody, _ bodyB: CelestialBody, target: Double,
+        low: Double, high: Double, gLow: Double, gHigh: Double
+    ) -> Double? {
+        if abs(gLow) < aspectRootTolDegrees { return low }
+        if abs(gHigh) < aspectRootTolDegrees { return high }
+        guard (gLow < 0) != (gHigh < 0), abs(gHigh - gLow) < 180.0 else { return nil }
+        return refineAspectRoot(
+            bodyA, bodyB, target: target,
+            low: low, high: high, gLow: gLow, gHigh: gHigh
+        )
     }
 
     /// Safeguarded Newton-bisection on a sign-changing bracket.
@@ -186,16 +220,5 @@ extension AstroCalculator {
             if g < 0 { xLow = root } else { xHigh = root }
         }
         return root
-    }
-
-    /// Merge roots that collapse to the same crossing (e.g. ±phi targets at conjunction/opposition).
-    private static func dedupedRoots(_ roots: [Double]) -> [Double] {
-        guard roots.count > 1 else { return roots }
-        let sorted = roots.sorted()
-        var unique: [Double] = [sorted[0]]
-        for value in sorted.dropFirst() where abs(value - (unique.last ?? value)) > 1e-3 {
-            unique.append(value)
-        }
-        return unique
     }
 }
