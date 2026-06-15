@@ -178,6 +178,29 @@ public enum AstroCalculator {
         )
     }
 
+    /// Topocentric geometric horizontal coordinates (alt/az, no refraction) for an observer.
+    /// Diurnal parallax is applied for distance-bearing bodies; computed points get geometric alt/az.
+    public static func horizontal(
+        of body: CelestialBody, at moment: CivilMoment, observer: GeoCoordinate
+    ) -> HorizontalCoordinate {
+        let position = planetPosition(body, for: moment)
+        let equatorial = EquatorialCoordinate.from(
+            eclipticLongitudeDegrees: position.longitude,
+            latitudeDegrees: position.latitude,
+            trueObliquityDegrees: moment.trueObliquity
+        )
+        return Topocentric.horizontal(
+            rightAscensionDegrees: equatorial.rightAscension,
+            declinationDegrees: equatorial.declination,
+            distanceAU: position.distance,
+            localApparentSiderealTimeDegrees: moment.localApparentSiderealTime(
+                longitude: observer.longitude
+            ),
+            observerLatitudeDegrees: observer.latitude,
+            observerElevationMeters: observer.elevation
+        )
+    }
+
     /// --- Batch (neutral, no ascendant / zodiac) ---
     public static func positions(
         of bodies: Set<CelestialBody>,
