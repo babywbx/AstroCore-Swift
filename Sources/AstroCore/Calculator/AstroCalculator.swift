@@ -229,6 +229,33 @@ public enum AstroCalculator {
         )
     }
 
+    /// Equation of time in minutes (apparent solar time − mean solar time) for a Julian Day in UT.
+    /// True solar time = mean solar time + equationOfTime + (longitudeDegrees × 4) minutes (east positive).
+    public static func equationOfTime(julianDayUT jd: Double) -> Double {
+        let jdTT = jd + deltaTSeconds(julianDayUT: jd) / 86400.0
+        let t = (jdTT - JulianDay.j2000) / 36525.0
+        let tau = (jdTT - JulianDay.j2000) / 365250.0
+        // Sun's geometric mean longitude (Meeus 28.2), degrees.
+        let meanLongitude = AngleMath.normalized(degrees:
+            280.4664567 + 360007.6982779 * tau + 0.03032028 * tau * tau
+                + tau * tau * tau / 49931.0
+                - tau * tau * tau * tau / 15300.0
+                - tau * tau * tau * tau * tau / 2000000.0)
+        let nutation = Nutation.compute(julianCenturiesTT: t)
+        let trueObliquity = Obliquity.meanObliquity(julianCenturiesTT: t) + nutation.obliquity / 3600.0
+        let sun = SolarPosition.compute(tau: tau, t: t)
+        let apparentLongitude = AngleMath.normalized(degrees: sun.longitude + nutation.longitude / 3600.0)
+        let apparentRA = EquatorialCoordinate.from(
+            eclipticLongitudeDegrees: apparentLongitude,
+            latitudeDegrees: sun.latitude,
+            trueObliquityDegrees: trueObliquity
+        ).rightAscension
+        var degrees = meanLongitude - apparentRA + (nutation.longitude / 3600.0) * TrigDeg.cos(trueObliquity)
+        degrees = degrees.truncatingRemainder(dividingBy: 360.0)
+        if degrees > 180.0 { degrees -= 360.0 } else if degrees < -180.0 { degrees += 360.0 }
+        return degrees * 4.0
+    }
+
     /// --- Batch (neutral, no ascendant / zodiac) ---
     public static func positions(
         of bodies: Set<CelestialBody>,
