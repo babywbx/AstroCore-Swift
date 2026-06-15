@@ -42,8 +42,9 @@ public struct OrbPolicy: Sendable, Hashable, Codable {
     ) -> Double {
         let base = baseOrbs[kind] ?? kind.defaultOrbDegrees
         guard !bodyOrbModifiers.isEmpty, kind.isMajor else { return base }
-        let weightA = bodyOrbModifiers[bodyA] ?? base
-        let weightB = bodyOrbModifiers[bodyB] ?? base
-        return max(weightA, weightB) * kind.majorOrbScale
+        let modifierA = bodyOrbModifiers[bodyA]
+        let modifierB = bodyOrbModifiers[bodyB]
+        guard modifierA != nil || modifierB != nil else { return base }
+        return max(modifierA ?? base, modifierB ?? base) * kind.majorOrbScale
     }
 }

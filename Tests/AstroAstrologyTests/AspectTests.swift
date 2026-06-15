@@ -75,6 +75,26 @@ struct AspectTests {
         )
     }
 
+    @Test func partialWeightedPolicyKeepsBaseOrbForUnweightedPair() {
+        let policy = OrbPolicy(baseOrbs: OrbPolicy.default.baseOrbs, bodyOrbModifiers: [.sun: 10.0])
+        // Neither mars nor jupiter is weighted -> square stays at base, not contracted by the scale.
+        #expect(policy.allowedOrb(for: .square, bodyA: .mars, bodyB: .jupiter) == 7.0)
+        // A weighted endpoint still widens the major aspect.
+        #expect(abs(policy.allowedOrb(for: .square, bodyA: .sun, bodyB: .mars) - 8.75) < 1e-12)
+    }
+
+    @Test func orbPolicyRoundTripsThroughJSON() throws {
+        for policy in [OrbPolicy.default, OrbPolicy.luminariesWeighted] {
+            let data = try JSONEncoder().encode(policy)
+            let decoded = try JSONDecoder().decode(OrbPolicy.self, from: data)
+            #expect(decoded == policy)
+            #expect(
+                decoded.allowedOrb(for: .conjunction, bodyA: .sun, bodyB: .moon)
+                    == policy.allowedOrb(for: .conjunction, bodyA: .sun, bodyB: .moon)
+            )
+        }
+    }
+
     @Test func aspectModelDerivesSeparatingAndRoundTrips() throws {
         let aspect = Aspect(
             bodyA: .sun, bodyB: .moon, kind: .trine,
