@@ -82,4 +82,16 @@ struct BenchmarkTests {
         }
         print("☉  Mars heliocentric: \(formatMicroseconds(helio.perCallMicroseconds)) µs/call")
     }
+
+    @Test func benchmarkHorizontal() throws {
+        let moment = try CivilMoment(
+            year: 2024, month: 6, day: 21, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        let observer = try GeoCoordinate(latitude: 51.4779, longitude: -0.0015, elevation: 45.0)
+        let iterations = 2000
+        let result = benchmark(iterations: iterations) {
+            _ = AstroCalculator.horizontal(of: .moon, at: moment, observer: observer)
+        }
+        print("🧭  Moon horizontal: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
+    }
 }
