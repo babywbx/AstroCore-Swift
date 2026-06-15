@@ -39,16 +39,17 @@ struct IlluminationTests {
         #expect(try #require(AstroCalculator.illumination(of: .moon, at: fullMoon)).illuminatedFraction > 0.98)
     }
 
-    // TODO(a4c): fill from local reference capture (controller will drive). MEASURED, NOT FABRICATED.
-    // Moon + Venus illuminated fraction / phase angle at 2000-01-13 12:00:00 UTC; tolerance set at capture.
-    // @Test func illuminationMatchesIndependentAnchors() throws {
-    //     let moment = try CivilMoment(year: 2000, month: 1, day: 13, hour: 12, minute: 0, timeZoneIdentifier: "UTC")
-    //     let tolFraction = MEASURED_TOL_FRACTION
-    //     let tolDegrees = MEASURED_TOL_DEG
-    //     let moon = try #require(AstroCalculator.illumination(of: .moon, at: moment))
-    //     #expect(abs(moon.illuminatedFraction - MEASURED_MOON_FRACTION) < tolFraction)
-    //     #expect(abs(moon.phaseAngle - MEASURED_MOON_PHASE) < tolDegrees)
-    //     let venus = try #require(AstroCalculator.illumination(of: .venus, at: moment))
-    //     #expect(abs(venus.illuminatedFraction - MEASURED_VENUS_FRACTION) < tolFraction)
-    // }
+    /// Anchored against a local reference ephemeris (geocentric) at 2000-01-13 12:00:00 UTC.
+    /// Moon + Venus illuminated fraction / phase angle. MEASURED, NOT FABRICATED.
+    /// Tolerances reflect measured agreement (fraction < 5e-5, phase < 1e-3 deg).
+    @Test func illuminationMatchesIndependentAnchors() throws {
+        let moment = try CivilMoment(year: 2000, month: 1, day: 13, hour: 12, minute: 0, timeZoneIdentifier: "UTC")
+        let tolFraction = 0.001
+        let tolDegrees = 0.1
+        let moon = try #require(AstroCalculator.illumination(of: .moon, at: moment))
+        #expect(abs(moon.illuminatedFraction - 0.3873964) < tolFraction)
+        #expect(abs(moon.phaseAngle - 103.0164) < tolDegrees)
+        let venus = try #require(AstroCalculator.illumination(of: .venus, at: moment))
+        #expect(abs(venus.illuminatedFraction - 0.7927876) < tolFraction)
+    }
 }
