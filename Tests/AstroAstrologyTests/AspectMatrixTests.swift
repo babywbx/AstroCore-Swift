@@ -134,8 +134,19 @@ struct AspectMatrixTests {
             natal: states, transit: states, aspectKinds: Set(AspectKind.allCases)
         )
         let grid = AstrologyCalculator.aspects(among: states, aspectKinds: Set(AspectKind.allCases))
-        let upper = cross.aspects.filter {
-            (AspectEngine.bodyOrder[$0.bodyA] ?? -1) < (AspectEngine.bodyOrder[$0.bodyB] ?? -1)
+        let upper = cross.aspects.compactMap { aspect -> Aspect? in
+            let orderA = AspectEngine.bodyOrder[aspect.natalBody] ?? -1
+            let orderB = AspectEngine.bodyOrder[aspect.transitBody] ?? -1
+            guard orderA < orderB else { return nil }
+            return Aspect(
+                bodyA: aspect.natalBody,
+                bodyB: aspect.transitBody,
+                kind: aspect.kind,
+                deviation: aspect.deviation,
+                allowedOrb: aspect.allowedOrb,
+                isApplying: aspect.isApplying,
+                isExact: aspect.isExact
+            )
         }
         #expect(Set(upper) == Set(grid.aspects))
     }
@@ -150,8 +161,46 @@ struct AspectMatrixTests {
         let cross = AstrologyCalculator.crossAspects(natal: natal, transit: transit)
         #expect(cross.aspects.count == 1)
         #expect(cross.aspects.first?.kind == .conjunction)
-        #expect(cross.aspects.first?.bodyA == .sun)
-        #expect(cross.aspects.first?.bodyB == .sun)
+        #expect(cross.aspects.first?.natalBody == .sun)
+        #expect(cross.aspects.first?.transitBody == .sun)
+        #expect(cross.aspect(natal: .sun, transit: .sun) == cross.aspects.first)
+    }
+
+    @Test func crossAspectsDirectedLookupKeepsNatalAndTransitSidesDistinct() {
+        let natal: [CelestialBody: CelestialState] = [
+            .sun: CelestialState(body: .sun, longitude: 0, latitude: 0, speed: 1),
+            .moon: CelestialState(body: .moon, longitude: 100, latitude: 0, speed: 13)
+        ]
+        let transit: [CelestialBody: CelestialState] = [
+            .sun: CelestialState(body: .sun, longitude: 190, latitude: 0, speed: 1),
+            .moon: CelestialState(body: .moon, longitude: 0.5, latitude: 0, speed: 13)
+        ]
+
+        let cross = AstrologyCalculator.crossAspects(
+            natal: natal,
+            transit: transit,
+            aspectKinds: [.conjunction, .square]
+        )
+
+        #expect(cross.natalBodies == [.sun, .moon])
+        #expect(cross.transitBodies == [.sun, .moon])
+        #expect(cross.aspect(natal: .sun, transit: .moon)?.kind == .conjunction)
+        #expect(cross.aspect(natal: .moon, transit: .sun)?.kind == .square)
+        #expect(cross.aspects(natal: .sun).count == 1)
+        #expect(cross.aspects(transit: .sun).count == 1)
+    }
+
+    @Test func crossAspectsRoundTripsThroughJSON() throws {
+        let natal: [CelestialBody: CelestialState] = [
+            .sun: CelestialState(body: .sun, longitude: 0, latitude: 0, speed: 1)
+        ]
+        let transit: [CelestialBody: CelestialState] = [
+            .moon: CelestialState(body: .moon, longitude: 0.5, latitude: 0, speed: 13)
+        ]
+        let cross = AstrologyCalculator.crossAspects(natal: natal, transit: transit)
+        let data = try JSONEncoder().encode(cross)
+        let decoded = try JSONDecoder().decode(CrossAspectGrid.self, from: data)
+        #expect(decoded == cross)
     }
 
     @Test func natalAspectsProducerAssemblesGridAndAscendant() throws {

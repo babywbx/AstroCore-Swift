@@ -5,6 +5,14 @@ enum AspectEngine {
     /// |deviation| within this threshold marks the aspect as partile (exact).
     static let partileOrbDegrees = 1.0
 
+    private struct Resolution {
+        let kind: AspectKind
+        let deviation: Double
+        let allowedOrb: Double
+        let isApplying: Bool
+        let isExact: Bool
+    }
+
     /// Stable CaseIterable position per body, for O(1) canonical ordering.
     static let bodyOrder: [CelestialBody: Int] = Dictionary(
         uniqueKeysWithValues: CelestialBody.allCases.enumerated().map { ($1, $0) }
@@ -32,7 +40,25 @@ enum AspectEngine {
         bodyB: CelestialBody, longitudeB: Double, speedB: Double,
         aspectKinds: Set<AspectKind>, orbPolicy: OrbPolicy
     ) -> Aspect? {
-        var best: Aspect?
+        guard let resolution = resolveFields(
+            bodyA: bodyA, longitudeA: longitudeA, speedA: speedA,
+            bodyB: bodyB, longitudeB: longitudeB, speedB: speedB,
+            aspectKinds: aspectKinds, orbPolicy: orbPolicy
+        ) else { return nil }
+        return Aspect(
+            bodyA: bodyA, bodyB: bodyB, kind: resolution.kind,
+            deviation: resolution.deviation, allowedOrb: resolution.allowedOrb,
+            isApplying: resolution.isApplying,
+            isExact: resolution.isExact
+        )
+    }
+
+    private static func resolveFields(
+        bodyA: CelestialBody, longitudeA: Double, speedA: Double,
+        bodyB: CelestialBody, longitudeB: Double, speedB: Double,
+        aspectKinds: Set<AspectKind>, orbPolicy: OrbPolicy
+    ) -> Resolution? {
+        var best: Resolution?
         for kind in AspectKind.allCases where aspectKinds.contains(kind) {
             let deviation = AstroCalculator.aspectSeparation(
                 longitudeA: longitudeA, longitudeB: longitudeB, aspectAngleDegrees: kind.angleDegrees
@@ -44,8 +70,8 @@ enum AspectEngine {
                 speedA: speedA, speedB: speedB,
                 longitudeA: longitudeA, longitudeB: longitudeB, aspectAngleDegrees: kind.angleDegrees
             )
-            best = Aspect(
-                bodyA: bodyA, bodyB: bodyB, kind: kind,
+            best = Resolution(
+                kind: kind,
                 deviation: deviation, allowedOrb: allowed,
                 isApplying: closingRate > 0,
                 isExact: abs(deviation) <= partileOrbDegrees
@@ -103,24 +129,24 @@ enum AspectEngine {
         return buildGrid(among: states, aspectKinds: aspectKinds, orbPolicy: orbPolicy)
     }
 
-    /// Asymmetric M×N cross-set grid (synastry / transit): every natal body against every transit body.
-    /// bodyA = natal, bodyB = transit; no canonical reorder, no same-body skip.
+    /// Asymmetric MxN cross-set grid (synastry / transit): every natal body against every transit body.
+    /// Keeps natal/transit direction; no canonical reorder, no same-body skip.
     static func crossGrid(
         natal: [CelestialBody: CelestialState],
         transit: [CelestialBody: CelestialState],
         aspectKinds: Set<AspectKind>,
         orbPolicy: OrbPolicy
-    ) -> (grid: AspectGrid, comparisons: Int) {
+    ) -> (grid: CrossAspectGrid, comparisons: Int) {
         let natalEntries = natal.sorted { (bodyOrder[$0.key] ?? 0) < (bodyOrder[$1.key] ?? 0) }
         let transitEntries = transit.sorted { (bodyOrder[$0.key] ?? 0) < (bodyOrder[$1.key] ?? 0) }
 
-        var matched: [Aspect] = []
+        var matched: [CrossAspect] = []
         matched.reserveCapacity(natalEntries.count * transitEntries.count)
         var comparisons = 0
         for natalEntry in natalEntries {
             for transitEntry in transitEntries {
                 comparisons += 1
-                if let aspect = resolveOrdered(
+                if let resolution = resolveFields(
                     bodyA: natalEntry.key,
                     longitudeA: natalEntry.value.longitude,
                     speedA: natalEntry.value.speed,
@@ -130,12 +156,22 @@ enum AspectEngine {
                     aspectKinds: aspectKinds,
                     orbPolicy: orbPolicy
                 ) {
-                    matched.append(aspect)
+                    matched.append(CrossAspect(
+                        natalBody: natalEntry.key,
+                        transitBody: transitEntry.key,
+                        kind: resolution.kind,
+                        deviation: resolution.deviation,
+                        allowedOrb: resolution.allowedOrb,
+                        isApplying: resolution.isApplying,
+                        isExact: resolution.isExact
+                    ))
                 }
             }
         }
-        let axis = Set(natal.keys).union(transit.keys)
-            .sorted { (bodyOrder[$0] ?? 0) < (bodyOrder[$1] ?? 0) }
-        return (AspectGrid(bodies: axis, aspects: matched), comparisons)
+        return (CrossAspectGrid(
+            natalBodies: natalEntries.map(\.key),
+            transitBodies: transitEntries.map(\.key),
+            aspects: matched
+        ), comparisons)
     }
 }

@@ -51,7 +51,7 @@ extension AstrologyCalculator {
         transit transitStates: [CelestialBody: CelestialState],
         aspectKinds: Set<AspectKind> = AspectKind.ptolemaic,
         orbPolicy: OrbPolicy = .default
-    ) -> AspectGrid {
+    ) -> CrossAspectGrid {
         AspectEngine.crossGrid(
             natal: natalStates, transit: transitStates,
             aspectKinds: aspectKinds, orbPolicy: orbPolicy
