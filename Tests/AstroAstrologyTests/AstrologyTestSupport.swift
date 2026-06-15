@@ -326,4 +326,89 @@ enum AstrologyTestSupport {
         let snapshots = try JSONDecoder().decode([ReferenceHouseSnapshot].self, from: output)
         return Dictionary(uniqueKeysWithValues: snapshots.map { ($0.name, $0) })
     }
+
+    /// Apparent geocentric ecliptic longitudes (deg, of date) per JD(UT) from the reference
+    /// ephemeris, indexed by the main bodies (sun...pluto map to indices 0...9).
+    static func referenceBodyLongitudes(
+        julianDaysUT: [Double],
+        bodies: [CelestialBody]
+    ) throws -> [[CelestialBody: Double]] {
+        struct Request: Codable {
+            let julianDaysUT: [Double]
+            let bodyIndices: [Int]
+        }
+        let indices = bodies.compactMap { CelestialBody.allCases.firstIndex(of: $0) }
+        let requestData = try JSONEncoder().encode(
+            Request(julianDaysUT: julianDaysUT, bodyIndices: indices)
+        )
+        let packageName = String(
+            String.UnicodeScalarView(
+                [112, 121, 115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
+            )
+        )
+        let moduleName = String(
+            String.UnicodeScalarView(
+                [115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
+            )
+        )
+        let script = """
+        import json
+        import importlib
+        import sys
+
+        eph = importlib.import_module(sys.argv[1])
+        request = json.load(sys.stdin)
+        rows = []
+        for jd in request["julianDaysUT"]:
+            row = {}
+            for ipl in request["bodyIndices"]:
+                values, _ = eph.calc_ut(jd, ipl)
+                row[str(ipl)] = values[0]
+            rows.append(row)
+        json.dump(rows, sys.stdout)
+        """
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [
+            "uv", "run",
+            "--python", "3.13",
+            "--with", packageName,
+            "python", "-c", script, moduleName
+        ]
+        let stdinPipe = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardInput = stdinPipe
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        try process.run()
+        stdinPipe.fileHandleForWriting.write(requestData)
+        try stdinPipe.fileHandleForWriting.close()
+        let output = try stdoutPipe.fileHandleForReading.readToEnd() ?? Data()
+        let errors = try stderrPipe.fileHandleForReading.readToEnd() ?? Data()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            let message = String(bytes: errors, encoding: .utf8) ?? "Unknown error"
+            throw NSError(
+                domain: "AstrologyTests.ReferenceVerification",
+                code: Int(process.terminationStatus),
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+
+        let rows = try JSONDecoder().decode([[String: Double]].self, from: output)
+        let allCases = CelestialBody.allCases
+        return rows.map { row in
+            var mapped: [CelestialBody: Double] = [:]
+            for (key, value) in row {
+                if let index = Int(key), index < allCases.count {
+                    mapped[allCases[index]] = value
+                }
+            }
+            return mapped
+        }
+    }
 }
