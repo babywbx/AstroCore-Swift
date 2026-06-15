@@ -201,6 +201,34 @@ public enum AstroCalculator {
         )
     }
 
+    /// Illumination (phase angle, illuminated fraction, elongation) from Sun-body-Earth geometry.
+    /// nil for the Sun and for computed points (which have no geocentric distance).
+    public static func illumination(
+        of body: CelestialBody, at moment: CivilMoment
+    ) -> Illumination? {
+        guard body != .sun else { return nil }
+        let sun = planetPosition(.sun, for: moment)
+        let target = planetPosition(body, for: moment)
+        guard let earthSun = sun.distance, let geocentric = target.distance else { return nil }
+
+        let (sinLatT, cosLatT) = TrigDeg.sincos(target.latitude)
+        let (sinLatS, cosLatS) = TrigDeg.sincos(sun.latitude)
+        let cosElongation = min(1.0, max(-1.0,
+                                         sinLatT * sinLatS + cosLatT * cosLatS * TrigDeg.cos(target.longitude - sun.longitude)))
+        let elongation = TrigDeg.acos(cosElongation)
+
+        let (sinPsi, cosPsi) = TrigDeg.sincos(elongation)
+        let phaseAngle = AngleMath.toDegrees(Foundation.atan2(
+            earthSun * sinPsi, geocentric - earthSun * cosPsi
+        ))
+        let illuminatedFraction = (1.0 + TrigDeg.cos(phaseAngle)) / 2.0
+        return Illumination(
+            phaseAngle: phaseAngle,
+            illuminatedFraction: illuminatedFraction,
+            elongation: elongation
+        )
+    }
+
     /// --- Batch (neutral, no ascendant / zodiac) ---
     public static func positions(
         of bodies: Set<CelestialBody>,
