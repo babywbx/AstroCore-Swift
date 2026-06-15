@@ -65,4 +65,16 @@ struct HorizontalCoordinateTests {
         #expect(abs(high - 80.0) < 0.01) // negligible near zenith
         #expect(Refraction.apparentAltitude(geometricAltitudeDegrees: 45.0) > 45.0)
     }
+
+    @Test func refractionIsFiniteAndSafeBelowHorizon() {
+        // The Bennett pole at h=-4.4 must not produce NaN; below ~-1° we return geometric unchanged.
+        for h in [-1.0001, -4.4, -5.0, -18.0, -90.0] {
+            let apparent = Refraction.apparentAltitude(geometricAltitudeDegrees: h)
+            #expect(apparent.isFinite)
+            #expect(apparent == h) // unchanged below the horizon threshold
+        }
+        // Just above the threshold stays finite and refraction is positive (raises altitude).
+        let nearHorizon = Refraction.apparentAltitude(geometricAltitudeDegrees: 0.0)
+        #expect(nearHorizon.isFinite && nearHorizon > 0.0)
+    }
 }
