@@ -56,4 +56,13 @@ struct HorizontalCoordinateTests {
         #expect(abs(moon.altitude + 66.32013) < tol)
         AstroCoreTestSupport.expectCircularlyEqual(moon.azimuth, 15.83647, tolerance: tol, "moon az")
     }
+
+    @Test func refractionRaisesLowAltitudeAndVanishesHigh() {
+        // Standard refraction (Bennett): ~34′ at the horizon, ~0 at the zenith.
+        let atHorizon = Refraction.apparentAltitude(geometricAltitudeDegrees: 0.0)
+        #expect(atHorizon > 0.4 && atHorizon < 0.7) // ~34′ ≈ 0.57°
+        let high = Refraction.apparentAltitude(geometricAltitudeDegrees: 80.0)
+        #expect(abs(high - 80.0) < 0.01) // negligible near zenith
+        #expect(Refraction.apparentAltitude(geometricAltitudeDegrees: 45.0) > 45.0)
+    }
 }
