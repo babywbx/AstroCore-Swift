@@ -8,12 +8,12 @@ enum Topocentric {
     /// Observer (ρ·sinφ′, ρ·cosφ′) from geodetic latitude (deg) and elevation (m).
     static func observerParallaxConstants(
         latitudeDegrees latitude: Double, elevationMeters elevation: Double
-    ) -> (rhoSinPhiPrime: Double, rhoCosPhiPrime: Double) {
+    ) -> (rhoSinPhiPrime: Double, rhoCosPhiPrime: Double, sinLatitude: Double, cosLatitude: Double) {
         let u = AngleMath.toDegrees(Foundation.atan(bOverA * TrigDeg.tan(latitude)))
         let (sinLat, cosLat) = TrigDeg.sincos(latitude)
         let (sinU, cosU) = TrigDeg.sincos(u)
         let h = elevation / earthRadiusMeters
-        return (bOverA * sinU + h * sinLat, cosU + h * cosLat)
+        return (bOverA * sinU + h * sinLat, cosU + h * cosLat, sinLat, cosLat)
     }
 
     /// Geocentric → topocentric apparent equatorial, then to geometric alt/az.
@@ -29,10 +29,16 @@ enum Topocentric {
         let hourAngle = AngleMath.normalized(degrees: last - ra)
         var topoDec = dec
         var topoHourAngle = hourAngle
+        let sinLat: Double
+        let cosLat: Double
         if let distance, distance > 0 {
-            let (rhoSinPhiPrime, rhoCosPhiPrime) = observerParallaxConstants(
+            let parallax = observerParallaxConstants(
                 latitudeDegrees: latitude, elevationMeters: elevation
             )
+            let rhoSinPhiPrime = parallax.rhoSinPhiPrime
+            let rhoCosPhiPrime = parallax.rhoCosPhiPrime
+            sinLat = parallax.sinLatitude
+            cosLat = parallax.cosLatitude
             let sinParallax = earthRadiusMeters / (distance * auMeters)
             let (sinH, cosH) = TrigDeg.sincos(hourAngle)
             let (sinDec, cosDec) = TrigDeg.sincos(dec)
@@ -47,8 +53,9 @@ enum Topocentric {
                 cosDec - rhoCosPhiPrime * sinParallax * cosH
             ))
             topoHourAngle = AngleMath.normalized(degrees: hourAngle - deltaRaDeg)
+        } else {
+            (sinLat, cosLat) = TrigDeg.sincos(latitude)
         }
-        let (sinLat, cosLat) = TrigDeg.sincos(latitude)
         let (sinDecT, cosDecT) = TrigDeg.sincos(topoDec)
         let (sinHT, cosHT) = TrigDeg.sincos(topoHourAngle)
         let sinAlt = min(1.0, max(-1.0, sinLat * sinDecT + cosLat * cosDecT * cosHT))
