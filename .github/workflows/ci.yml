@@ -99,4 +99,4 @@ jobs:
       - name: Run baseline verification
         env:
           ASTROCORE_ENABLE_BASELINE_VERIFICATION: "1"
-        run: swift test -c release --filter HouseBaselineTests
+        run: swift test -c release --filter Baseline
