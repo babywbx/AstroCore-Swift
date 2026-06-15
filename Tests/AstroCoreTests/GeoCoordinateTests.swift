@@ -39,4 +39,11 @@ struct GeoCoordinateTests {
         #expect(back == c)
         #expect(try #require(String(data: data, encoding: .utf8)?.contains("elevation")))
     }
+
+    @Test func decodingOutOfRangeThrowsDataCorrupted() {
+        let json = #"{"latitude":999.0,"longitude":0.0}"#.data(using: .utf8)!
+        #expect(throws: DecodingError.self) {
+            _ = try JSONDecoder().decode(GeoCoordinate.self, from: json)
+        }
+    }
 }
