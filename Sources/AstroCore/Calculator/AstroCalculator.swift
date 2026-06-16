@@ -37,6 +37,17 @@ public enum AstroCalculator {
         return DeltaT.deltaT(decimalYear: decimalYear)
     }
 
+    /// UT Julian Day for a TT Julian Day, inverting ΔT (jdUT = jdTT − ΔT(jdUT)/86400).
+    public static func julianDayUT(fromJulianDayTT jdTT: Double) -> Double {
+        var jdUT = jdTT
+        for _ in 0..<8 {
+            let next = jdTT - deltaTSeconds(julianDayUT: jdUT) / 86400.0
+            if abs(next - jdUT) < 1e-9 { return next }
+            jdUT = next
+        }
+        return jdUT
+    }
+
     /// Apparent geocentric ecliptic longitude for a Julian Day in UT.
     public static func eclipticLongitude(
         of body: CelestialBody,

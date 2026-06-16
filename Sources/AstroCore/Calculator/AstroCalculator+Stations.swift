@@ -53,16 +53,7 @@ extension AstroCalculator {
         guard let stationTT = stationJulianDayTT(
             of: body, nearJulianDayTT: seedTT, searchWindowDays: window
         ) else { return nil }
-        var jdUT = stationTT
-        for _ in 0..<8 {
-            let next = stationTT - deltaTSeconds(julianDayUT: jdUT) / 86400.0
-            if abs(next - jdUT) < 1e-9 {
-                jdUT = next
-                break
-            }
-            jdUT = next
-        }
-        return jdUT
+        return julianDayUT(fromJulianDayTT: stationTT)
     }
 
     /// Direction of motion change at a station: `.retrograde` when the speed turns from positive to
