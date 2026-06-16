@@ -115,8 +115,9 @@ extension AstroCalculator {
         longitudeSpeed(of: bodyB, julianDayTT: jdTT) - longitudeSpeed(of: bodyA, julianDayTT: jdTT)
     }
 
-    /// Nearest TT root of the residual to `jd` within ±window for one target angle. Expands the
-    /// search symmetrically outward and stops once no closer root can remain on either side.
+    /// Nearest TT root of the residual to `jd` within ±window for one target angle, via the shared
+    /// `RootSolver`. The aspect-specific parts stay here: the angular sampling step (clamped by the
+    /// pair's relative speed) and the 180° wrap guard for the ±360 jumps in the angular residual.
     private static func nearestAspectRoot(
         _ bodyA: CelestialBody, _ bodyB: CelestialBody,
         target: Double, near jd: Double, window: Double
@@ -124,101 +125,18 @@ extension AstroCalculator {
         let relSpeed = abs(aspectResidualSlope(bodyA, bodyB, jdTT: jd))
         let rawStep = aspectSamplingArcDegrees / (2.0 * max(relSpeed, 1e-6))
         let step = min(max(rawStep, aspectMinStepDays), 2.0 * window / aspectMaxSamplesDivisor)
-
-        let seedG = aspectResidual(bodyA, bodyB, target: target, jdTT: jd)
-        if abs(seedG) < aspectRootTolDegrees { return jd }
-
-        var best: Double?
-        var bestDistance = Double.infinity
-        let forwardLimit = jd + window
-        let backwardLimit = jd - window
-        var forwardT = jd, forwardG = seedG, forwardActive = true
-        var backwardT = jd, backwardG = seedG, backwardActive = true
-        var shell = 1
-
-        while forwardActive || backwardActive {
-            if forwardActive {
-                let next = min(forwardT + step, forwardLimit)
-                let g = aspectResidual(bodyA, bodyB, target: target, jdTT: next)
-                if let root = bracketRoot(
-                    bodyA, bodyB, target: target,
-                    low: forwardT, high: next, gLow: forwardG, gHigh: g
-                ), abs(root - jd) < bestDistance {
-                    bestDistance = abs(root - jd)
-                    best = root
-                }
-                if next >= forwardLimit { forwardActive = false }
-                forwardT = next
-                forwardG = g
-            }
-            if backwardActive {
-                let next = max(backwardT - step, backwardLimit)
-                let g = aspectResidual(bodyA, bodyB, target: target, jdTT: next)
-                if let root = bracketRoot(
-                    bodyA, bodyB, target: target,
-                    low: next, high: backwardT, gLow: g, gHigh: backwardG
-                ), abs(root - jd) < bestDistance {
-                    bestDistance = abs(root - jd)
-                    best = root
-                }
-                if next <= backwardLimit { backwardActive = false }
-                backwardT = next
-                backwardG = g
-            }
-            if best != nil, Double(shell) * step >= bestDistance { break }
-            shell += 1
-        }
-        return best
-    }
-
-    /// A refined root inside one sampling interval, or nil when no real (non-wrap) crossing sits there.
-    private static func bracketRoot(
-        _ bodyA: CelestialBody, _ bodyB: CelestialBody, target: Double,
-        low: Double, high: Double, gLow: Double, gHigh: Double
-    ) -> Double? {
-        if abs(gLow) < aspectRootTolDegrees { return low }
-        if abs(gHigh) < aspectRootTolDegrees { return high }
-        guard (gLow < 0) != (gHigh < 0), abs(gHigh - gLow) < 180.0 else { return nil }
-        return refineAspectRoot(
-            bodyA, bodyB, target: target,
-            low: low, high: high, gLow: gLow, gHigh: gHigh
+        let tuning = RootSolver.Tuning(
+            step: step,
+            valueTolerance: aspectRootTolDegrees,
+            stepTolerance: aspectRootTolDays,
+            wrapGuardDegrees: 180.0
         )
-    }
-
-    /// Safeguarded Newton-bisection on a sign-changing bracket.
-    private static func refineAspectRoot(
-        _ bodyA: CelestialBody, _ bodyB: CelestialBody, target: Double,
-        low: Double, high: Double, gLow: Double, gHigh: Double
-    ) -> Double {
-        var xLow = gLow < 0 ? low : high
-        var xHigh = gLow < 0 ? high : low
-        var root = 0.5 * (low + high)
-        var stepOld = abs(high - low)
-        var stepCurrent = stepOld
-        var g = aspectResidual(bodyA, bodyB, target: target, jdTT: root)
-        var slope = aspectResidualSlope(bodyA, bodyB, jdTT: root)
-
-        for _ in 0..<60 {
-            let newtonOutOfRange =
-                ((root - xHigh) * slope - g) * ((root - xLow) * slope - g) > 0
-            let slowConvergence = abs(2.0 * g) > abs(stepOld * slope)
-            if newtonOutOfRange || slowConvergence {
-                stepOld = stepCurrent
-                stepCurrent = 0.5 * (xHigh - xLow)
-                root = xLow + stepCurrent
-                if xLow == root { return root }
-            } else {
-                stepOld = stepCurrent
-                stepCurrent = g / slope
-                let previous = root
-                root -= stepCurrent
-                if previous == root { return root }
-            }
-            if abs(stepCurrent) < aspectRootTolDays { return root }
-            g = aspectResidual(bodyA, bodyB, target: target, jdTT: root)
-            slope = aspectResidualSlope(bodyA, bodyB, jdTT: root)
-            if g < 0 { xLow = root } else { xHigh = root }
-        }
-        return root
+        return RootSolver.nearestRoot(
+            near: jd,
+            window: window,
+            tuning: tuning,
+            value: { aspectResidual(bodyA, bodyB, target: target, jdTT: $0) },
+            slope: { aspectResidualSlope(bodyA, bodyB, jdTT: $0) }
+        )
     }
 }
