@@ -1,6 +1,12 @@
 import AstroCore
 
 extension AstrologyCalculator {
+    /// Aspect patterns (stellium, grand trine, T-square, …) recognised on an existing grid.
+    /// Pure combinatorial detection over the grid edges; no ephemeris.
+    public static func patterns(in grid: AspectGrid) -> [AspectPattern] {
+        AspectPatternDetector.patterns(in: grid)
+    }
+
     /// Single-pair aspect query; nil when the separation exceeds every kind's allowed orb.
     public static func aspect(
         between bodyA: CelestialBody,
