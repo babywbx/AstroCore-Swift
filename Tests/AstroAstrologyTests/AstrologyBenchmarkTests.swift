@@ -43,6 +43,18 @@ struct AstrologyBenchmarkTests {
         print("ascendant: \(formatMicroseconds(result.perCallMicroseconds)) µs/call (\(iterations) iterations, \(String(format: "%.3f", result.totalSeconds))s total)")
     }
 
+    @Test func benchmarkRiseSetEvents() throws {
+        let date = try CivilMoment(
+            year: 2020, month: 3, day: 20, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        )
+        let coordinate = try GeoCoordinate(latitude: 51.5, longitude: 0.0)
+        let iterations = 200
+        let result = try benchmark(iterations: iterations, warmup: 20) {
+            _ = try AstrologyCalculator.riseSetEvents(of: .sun, on: date, coordinate: coordinate)
+        }
+        print("riseSetEvents [Sun, single day]: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
+    }
+
     @Test func benchmarkHouseSystems() throws {
         let fixture = try AstrologyTestSupport.newYork1990()
         let iterations = 5000

@@ -262,4 +262,22 @@ extension AstroCalculator {
         altitudeCrossings(of: body, coordinate: coordinate, from: start, through: end, applyRefraction: applyRefraction)
             .filter { !$0.rising }.map(\.julianDayUT)
     }
+
+    /// JDs where the body's geometric altitude crosses an explicit target (e.g. twilight
+    /// depressions), `rising` selecting ascending vs descending crossings. Unlike rise/set this uses
+    /// a fixed target altitude rather than the body's distance-dependent standard altitude.
+    public static func altitudeCrossingsUT(
+        of body: CelestialBody, coordinate: GeoCoordinate,
+        targetAltitudeDegrees target: Double, rising: Bool,
+        fromJulianDayUT start: Double, throughJulianDayUT end: Double
+    ) -> [Double] {
+        let value: (Double) -> Double = {
+            topocentricAltitudeDegrees(of: body, atJulianDayUT: $0, coordinate: coordinate) - target
+        }
+        let slope: (Double) -> Double = {
+            (value($0 + diurnalSlopeStepDays) - value($0 - diurnalSlopeStepDays)) / (2.0 * diurnalSlopeStepDays)
+        }
+        return RootSolver.roots(from: start, through: end, tuning: diurnalTuning(), value: value, slope: slope)
+            .filter { (slope($0) > 0) == rising }
+    }
 }
