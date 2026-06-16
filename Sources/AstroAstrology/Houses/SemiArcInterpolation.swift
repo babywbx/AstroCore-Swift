@@ -6,6 +6,19 @@ enum SemiArcInterpolation {
     private static let maxIterations = 60
     private static let convergenceDegrees = 1e-10
 
+    struct Context {
+        let tanLatitude: Double
+        let sinObliquity: Double
+        let cosObliquity: Double
+
+        init(latitude: Double, obliquity: Double) {
+            tanLatitude = TrigDeg.tan(latitude)
+            let obliquityTrig = TrigDeg.sincos(obliquity)
+            sinObliquity = obliquityTrig.sin
+            cosObliquity = obliquityTrig.cos
+        }
+    }
+
     /// Solve α(λ) = ARMC + f · H(λ) for the ecliptic longitude λ.
     static func solve(
         fraction: Double,
@@ -14,18 +27,30 @@ enum SemiArcInterpolation {
         obliquity: Double,
         initial: Double
     ) -> Double {
+        solve(
+            fraction: fraction,
+            ramc: ramc,
+            context: Context(latitude: latitude, obliquity: obliquity),
+            initial: initial
+        )
+    }
+
+    /// Solve α(λ) = ARMC + f · H(λ), reusing fixed latitude/obliquity terms.
+    static func solve(
+        fraction: Double,
+        ramc: Double,
+        context: Context,
+        initial: Double
+    ) -> Double {
         var lambda = initial
-        let tanLatitude = TrigDeg.tan(latitude)
-        let sinObliquity = TrigDeg.sin(obliquity)
-        let cosObliquity = TrigDeg.cos(obliquity)
 
         for _ in 0..<maxIterations {
-            let sinDeclination = TrigDeg.sin(lambda) * sinObliquity
+            let sinDeclination = TrigDeg.sin(lambda) * context.sinObliquity
             let cosDeclinationSquared = 1.0 - sinDeclination * sinDeclination
             guard cosDeclinationSquared > 1e-20 else { break }
 
             let tanDeclination = sinDeclination / cosDeclinationSquared.squareRoot()
-            let polarFactor = tanLatitude * tanDeclination
+            let polarFactor = context.tanLatitude * tanDeclination
             let clamped = max(-1.0, min(1.0, -polarFactor))
             let semiArc = TrigDeg.acos(clamped)
             let rightAscension = ramc + fraction * semiArc
@@ -33,7 +58,7 @@ enum SemiArcInterpolation {
             let nextLongitude = AngleMath.normalized(
                 degrees: TrigDeg.atan2(
                     TrigDeg.sin(rightAscension),
-                    TrigDeg.cos(rightAscension) * cosObliquity
+                    TrigDeg.cos(rightAscension) * context.cosObliquity
                 )
             )
 

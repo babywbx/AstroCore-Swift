@@ -28,6 +28,7 @@ enum PlacidusHouses {
         let mc = context.angles.midheaven
         let asc = context.angles.ascendant
         let porphyry = PorphyryHouses.porphyryCusps(angles: context.angles)
+        let interpolationContext = SemiArcInterpolation.Context(latitude: phi, obliquity: epsilon)
 
         var cusps = [Double](repeating: 0.0, count: 12)
         cusps[0] = asc // 1
@@ -38,23 +39,23 @@ enum PlacidusHouses {
         // East-of-meridian, above horizon: cusps 11, 12
         cusps[10] = solve(
             fraction: 1.0 / 3.0,
-            ramc: ramc, phi: phi, epsilon: epsilon,
+            ramc: ramc, context: interpolationContext,
             initial: porphyry[10]
         ) // 11
         cusps[11] = solve(
             fraction: 2.0 / 3.0,
-            ramc: ramc, phi: phi, epsilon: epsilon,
+            ramc: ramc, context: interpolationContext,
             initial: porphyry[11]
         ) // 12
         // West-of-meridian, above horizon: cusps 8, 9
         cusps[7] = solve(
             fraction: -2.0 / 3.0,
-            ramc: ramc, phi: phi, epsilon: epsilon,
+            ramc: ramc, context: interpolationContext,
             initial: porphyry[7]
         ) // 8
         cusps[8] = solve(
             fraction: -1.0 / 3.0,
-            ramc: ramc, phi: phi, epsilon: epsilon,
+            ramc: ramc, context: interpolationContext,
             initial: porphyry[8]
         ) // 9
 
@@ -71,15 +72,13 @@ enum PlacidusHouses {
     private static func solve(
         fraction f: Double,
         ramc: Double,
-        phi: Double,
-        epsilon: Double,
+        context: SemiArcInterpolation.Context,
         initial: Double
     ) -> Double {
         SemiArcInterpolation.solve(
             fraction: f,
             ramc: ramc,
-            latitude: phi,
-            obliquity: epsilon,
+            context: context,
             initial: initial
         )
     }

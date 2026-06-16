@@ -4,6 +4,16 @@ import Testing
 
 @Suite("Neutral batch")
 struct NeutralBatchTests {
+    @Test func emptyBatchRequestsReturnEmpty() throws {
+        let moment = try CivilMoment(
+            year: 2000, month: 1, day: 1, hour: 12, minute: 0,
+            timeZoneIdentifier: "UTC"
+        )
+
+        #expect(AstroCalculator.positions(of: [], at: moment).isEmpty)
+        #expect(AstroCalculator.states(of: [], at: moment).isEmpty)
+    }
+
     @Test func positionsMatchPerBodyCalls() throws {
         let moment = try CivilMoment(
             year: 1990, month: 8, day: 15, hour: 14, minute: 30,

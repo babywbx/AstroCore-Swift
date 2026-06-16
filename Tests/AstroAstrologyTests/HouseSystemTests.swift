@@ -564,6 +564,26 @@ struct HouseSystemTests {
         #expect(topocentric.resolvedSystem == .topocentric)
     }
 
+    @Test func housesRejectAscendantExtremeLatitude() throws {
+        let moment = try CivilMoment(
+            year: 2000,
+            month: 6,
+            day: 21,
+            hour: 12,
+            minute: 0,
+            timeZoneIdentifier: "UTC"
+        )
+        let coordinate = try GeoCoordinate(latitude: 85.1, longitude: 0.0)
+
+        #expect(throws: AstrologyError.core(.extremeLatitude)) {
+            _ = try AstrologyCalculator.houses(
+                for: moment,
+                coordinate: coordinate,
+                system: .wholeSign
+            )
+        }
+    }
+
     @Test func gauquelinUsesIndependentClockwiseSectorModel() throws {
         let fixture = try AstrologyTestSupport.paris1995()
         let sectors = try AstrologyCalculator.gauquelinSectors(

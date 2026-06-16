@@ -217,9 +217,34 @@ public enum AstroCalculator {
     public static func illumination(
         of body: CelestialBody, at moment: CivilMoment
     ) -> Illumination? {
-        guard body != .sun else { return nil }
-        let sun = planetPosition(.sun, for: moment)
-        let target = planetPosition(body, for: moment)
+        switch body {
+        case .sun, .meanNode, .trueNode, .lilith, .trueLilith:
+            return nil
+        case .moon, .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
+            break
+        }
+
+        let (tau, t) = timeParameters(for: moment)
+        let nutationLongitude = moment.nutationLongitude
+        let earth = VSOP87D.earthPosition(tau: tau)
+        let sun = makePosition(
+            from: SolarPosition.compute(tau: tau, t: t, earth: earth),
+            nutationArcsec: nutationLongitude
+        )
+        let targetRaw: RawCelestialPosition
+        switch body {
+        case .moon:
+            targetRaw = ELP2000.compute(julianCenturiesTT: t)
+        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
+            targetRaw = PlanetaryPosition.compute(
+                body,
+                tau: tau,
+                earthMotion: PlanetaryPosition.earthMotion(tau: tau, earth: earth)
+            )
+        case .sun, .meanNode, .trueNode, .lilith, .trueLilith:
+            return nil
+        }
+        let target = makePosition(from: targetRaw, nutationArcsec: nutationLongitude)
         guard let earthSun = sun.distance, let geocentric = target.distance else { return nil }
 
         let (sinLatT, cosLatT) = TrigDeg.sincos(target.latitude)
@@ -272,6 +297,8 @@ public enum AstroCalculator {
         of bodies: Set<CelestialBody>,
         at moment: CivilMoment
     ) -> [CelestialBody: CelestialPosition] {
+        guard !bodies.isEmpty else { return [:] }
+
         let tau = moment.julianMillenniaTT
         let t = moment.julianCenturiesTT
         let nutationLongitude = moment.nutationLongitude
@@ -279,7 +306,7 @@ public enum AstroCalculator {
         // Compute Earth position once (shared by Sun + all planets)
         let needsEarth = needsEarthPosition(for: bodies)
         let earth = needsEarth ? VSOP87D.earthPosition(tau: tau) : nil
-        let earthMotion = earth.map { PlanetaryPosition.earthMotion(tau: tau, earth: $0) }
+        let earthMotion = needsEarthMotion(for: bodies) ? earth.map { PlanetaryPosition.earthMotion(tau: tau, earth: $0) } : nil
 
         var result: [CelestialBody: CelestialPosition] = [:]
         result.reserveCapacity(bodies.count)
@@ -309,6 +336,8 @@ public enum AstroCalculator {
         of bodies: Set<CelestialBody>,
         at moment: CivilMoment
     ) -> [CelestialBody: CelestialState] {
+        guard !bodies.isEmpty else { return [:] }
+
         let base = positions(of: bodies, at: moment)
         let jdTT = julianDayTT(for: moment)
         let lower = eclipticLongitudes(of: bodies, julianDayTT: jdTT - speedStepDays)
@@ -354,16 +383,29 @@ public enum AstroCalculator {
         }
     }
 
+    private static func needsEarthMotion(for bodies: Set<CelestialBody>) -> Bool {
+        bodies.contains { body in
+            switch body {
+            case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
+                true
+            case .sun, .moon, .meanNode, .trueNode, .lilith, .trueLilith:
+                false
+            }
+        }
+    }
+
     private static func eclipticLongitudes(
         of bodies: Set<CelestialBody>,
         julianDayTT jd: Double
     ) -> [CelestialBody: Double] {
+        guard !bodies.isEmpty else { return [:] }
+
         let t = (jd - JulianDay.j2000) / 36525.0
         let tau = (jd - JulianDay.j2000) / 365250.0
         let nutationArcsec = Nutation.compute(julianCenturiesTT: t).longitude
         let needsEarth = needsEarthPosition(for: bodies)
         let earth = needsEarth ? VSOP87D.earthPosition(tau: tau) : nil
-        let earthMotion = earth.map { PlanetaryPosition.earthMotion(tau: tau, earth: $0) }
+        let earthMotion = needsEarthMotion(for: bodies) ? earth.map { PlanetaryPosition.earthMotion(tau: tau, earth: $0) } : nil
 
         var longitudes: [CelestialBody: Double] = [:]
         longitudes.reserveCapacity(bodies.count)

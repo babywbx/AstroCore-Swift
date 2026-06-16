@@ -28,15 +28,18 @@ enum GauquelinEngine {
             )
         }
 
-        let wrapped = sectors(context: context).enumerated().map { index, longitude in
+        let rawSectors = sectors(context: context)
+        var wrapped: [GauquelinSector] = []
+        wrapped.reserveCapacity(rawSectors.count)
+        for (index, longitude) in rawSectors.enumerated() {
             let normalized = AngleMath.normalized(degrees: longitude)
             let details = ZodiacMapper.details(forNormalizedLongitude: normalized)
-            return GauquelinSector(
+            wrapped.append(GauquelinSector(
                 number: index + 1,
                 eclipticLongitude: normalized,
                 sign: details.sign,
                 degreeInSign: details.degreeInSign
-            )
+            ))
         }
 
         return GauquelinResult(sectors: wrapped, angles: angles)
@@ -50,6 +53,7 @@ enum GauquelinEngine {
         let midheaven = context.angles.midheaven
         let descendant = context.angles.descendant
         let imumCoeli = context.angles.imumCoeli
+        let interpolationContext = SemiArcInterpolation.Context(latitude: latitude, obliquity: obliquity)
 
         var sectors = [Double](repeating: 0.0, count: 36)
         sectors[0] = ascendant
@@ -66,8 +70,7 @@ enum GauquelinEngine {
             sectors[sector - 1] = SemiArcInterpolation.solve(
                 fraction: fraction,
                 ramc: ramc,
-                latitude: latitude,
-                obliquity: obliquity,
+                context: interpolationContext,
                 initial: seed
             )
             sectors[sector + 17] = AngleMath.normalized(
@@ -84,8 +87,7 @@ enum GauquelinEngine {
             sectors[sector - 1] = SemiArcInterpolation.solve(
                 fraction: fraction,
                 ramc: ramc,
-                latitude: latitude,
-                obliquity: obliquity,
+                context: interpolationContext,
                 initial: seed
             )
             sectors[sector + 17] = AngleMath.normalized(

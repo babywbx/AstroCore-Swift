@@ -13,6 +13,10 @@ public enum AstrologyCalculator {
         } catch {
             throw AstrologyError.core(error)
         }
+        return ascendantResult(eclipticLongitude: ascLon)
+    }
+
+    private static func ascendantResult(eclipticLongitude ascLon: Double) -> AscendantResult {
         let zodiac = ZodiacMapper.details(forNormalizedLongitude: ascLon)
         return AscendantResult(
             eclipticLongitude: ascLon,
@@ -87,13 +91,13 @@ public enum AstrologyCalculator {
         system: HouseSystem = .placidus,
         polarFallback: PolarFallback = .porphyry
     ) throws(AstrologyError) -> NatalChart {
-        let positions = try natalPositions(
-            for: moment, coordinate: coordinate,
-            bodies: bodies, includeAscendant: true
-        )
         let houses = try houses(
             for: moment, coordinate: coordinate,
             system: system, polarFallback: polarFallback
+        )
+        let positions = NatalPositions(
+            ascendant: ascendantResult(eclipticLongitude: houses.angles.ascendant),
+            bodies: AstroCalculator.positions(of: bodies, at: moment)
         )
         return NatalChart(
             positions: positions, houses: houses,

@@ -21,12 +21,12 @@ enum AnglesEngine {
         let lastDeg = moment.localApparentSiderealTime(longitude: coordinate.longitude)
         let trueObl = moment.trueObliquity
 
-        let asc: Double
-        do {
-            asc = try AstroCalculator.ascendantLongitude(for: moment, coordinate: coordinate)
-        } catch {
-            throw AstrologyError.core(error)
-        }
+        try validateAscendantLatitude(coordinate.latitude)
+        let asc = Axis.ascendantLongitude(
+            lastDegrees: lastDeg,
+            trueObliquityDegrees: trueObl,
+            latitudeDegrees: coordinate.latitude
+        )
         let mc = midheavenLongitude(
             lastDegrees: lastDeg,
             trueObliquityDegrees: trueObl
@@ -38,6 +38,12 @@ enum AnglesEngine {
         )
 
         return Angles(ascendant: asc, midheaven: mc, vertex: vtx)
+    }
+
+    private static func validateAscendantLatitude(_ latitude: Double) throws(AstrologyError) {
+        guard abs(latitude) <= 85.0 else {
+            throw AstrologyError.core(.extremeLatitude)
+        }
     }
 
     /// Core MC formula: λ_MC = atan2(sin(ARMC), cos(ARMC) × cos(ε)).

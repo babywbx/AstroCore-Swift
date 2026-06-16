@@ -20,17 +20,26 @@ extension AstrologyCalculator {
         orbPolicy: OrbPolicy = .default
     ) throws(AstrologyError) -> ChartAspectGrid {
         let states = AstroCalculator.states(of: bodies, at: moment)
-        var participants: [(participant: AspectParticipant, longitude: Double, speed: Double)] = []
+        let orderedKinds = AspectEngine.orderedAspectKinds(aspectKinds)
+        var participants: [AspectParticipant] = []
+        var longitudes: [Double] = []
+        var speeds: [Double] = []
         participants.reserveCapacity(bodies.count + angles.count)
-        for body in bodies.sorted(by: { (AspectEngine.bodyOrder[$0] ?? 0) < (AspectEngine.bodyOrder[$1] ?? 0) }) {
+        longitudes.reserveCapacity(bodies.count + angles.count)
+        speeds.reserveCapacity(bodies.count + angles.count)
+        for body in AspectEngine.orderedBodies(bodies) {
             guard let state = states[body] else { continue }
-            participants.append((.body(body), state.longitude, state.speed))
+            participants.append(.body(body))
+            longitudes.append(state.longitude)
+            speeds.append(state.speed)
         }
         if !angles.isEmpty {
             let resolved = try AnglesEngine.compute(for: moment, coordinate: coordinate)
-            for angle in angles.sorted(by: { $0.rawValue < $1.rawValue }) {
+            for angle in ChartAngle.allCases where angles.contains(angle) {
                 if let longitude = angleLongitude(angle, in: resolved) {
-                    participants.append((.angle(angle), longitude, 0.0))
+                    participants.append(.angle(angle))
+                    longitudes.append(longitude)
+                    speeds.append(0.0)
                 }
             }
         }
@@ -40,17 +49,17 @@ extension AstrologyCalculator {
         for i in 0..<participants.count {
             for j in (i + 1)..<participants.count {
                 if let aspect = AspectEngine.resolveChartAspect(
-                    participantA: participants[i].participant,
-                    longitudeA: participants[i].longitude, speedA: participants[i].speed,
-                    participantB: participants[j].participant,
-                    longitudeB: participants[j].longitude, speedB: participants[j].speed,
-                    aspectKinds: aspectKinds, orbPolicy: orbPolicy
+                    participantA: participants[i],
+                    longitudeA: longitudes[i], speedA: speeds[i],
+                    participantB: participants[j],
+                    longitudeB: longitudes[j], speedB: speeds[j],
+                    orderedAspectKinds: orderedKinds, orbPolicy: orbPolicy
                 ) {
                     matched.append(aspect)
                 }
             }
         }
-        return ChartAspectGrid(participants: participants.map(\.participant), aspects: matched)
+        return ChartAspectGrid(participants: participants, aspects: matched)
     }
 
     private static func angleLongitude(_ angle: ChartAngle, in angles: Angles) -> Double? {

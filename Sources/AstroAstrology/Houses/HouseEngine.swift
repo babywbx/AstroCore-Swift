@@ -123,15 +123,17 @@ enum HouseEngine {
         angles: Angles
     ) -> HouseResult {
         precondition(cusps.count == 12, "House system must produce 12 cusps")
-        let wrapped = cusps.enumerated().map { index, longitude in
+        var wrapped: [HouseCusp] = []
+        wrapped.reserveCapacity(cusps.count)
+        for (index, longitude) in cusps.enumerated() {
             let normalized = AngleMath.normalized(degrees: longitude)
             let details = ZodiacMapper.details(forNormalizedLongitude: normalized)
-            return HouseCusp(
+            wrapped.append(HouseCusp(
                 number: index + 1,
                 eclipticLongitude: normalized,
                 sign: details.sign,
                 degreeInSign: details.degreeInSign
-            )
+            ))
         }
         return HouseResult(
             requestedSystem: requested,

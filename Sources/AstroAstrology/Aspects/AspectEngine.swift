@@ -18,6 +18,15 @@ enum AspectEngine {
         uniqueKeysWithValues: CelestialBody.allCases.enumerated().map { ($1, $0) }
     )
 
+    static func orderedAspectKinds(_ aspectKinds: Set<AspectKind>) -> [AspectKind] {
+        guard aspectKinds.count < AspectKind.allCases.count else { return Array(AspectKind.allCases) }
+        return AspectKind.allCases.filter { aspectKinds.contains($0) }
+    }
+
+    static func orderedBodies(_ bodies: Set<CelestialBody>) -> [CelestialBody] {
+        CelestialBody.allCases.filter { bodies.contains($0) }
+    }
+
     /// Resolve the tightest matching aspect (if any) between two motion-rich states.
     static func resolve(
         _ stateA: CelestialState,
@@ -30,7 +39,7 @@ enum AspectEngine {
         return resolveOrdered(
             bodyA: first.body, longitudeA: first.longitude, speedA: first.speed,
             bodyB: second.body, longitudeB: second.longitude, speedB: second.speed,
-            aspectKinds: aspectKinds, orbPolicy: orbPolicy
+            orderedAspectKinds: orderedAspectKinds(aspectKinds), orbPolicy: orbPolicy
         )
     }
 
@@ -40,10 +49,22 @@ enum AspectEngine {
         bodyB: CelestialBody, longitudeB: Double, speedB: Double,
         aspectKinds: Set<AspectKind>, orbPolicy: OrbPolicy
     ) -> Aspect? {
+        resolveOrdered(
+            bodyA: bodyA, longitudeA: longitudeA, speedA: speedA,
+            bodyB: bodyB, longitudeB: longitudeB, speedB: speedB,
+            orderedAspectKinds: orderedAspectKinds(aspectKinds), orbPolicy: orbPolicy
+        )
+    }
+
+    static func resolveOrdered(
+        bodyA: CelestialBody, longitudeA: Double, speedA: Double,
+        bodyB: CelestialBody, longitudeB: Double, speedB: Double,
+        orderedAspectKinds: [AspectKind], orbPolicy: OrbPolicy
+    ) -> Aspect? {
         guard let resolution = resolveFields(
             bodyA: bodyA, longitudeA: longitudeA, speedA: speedA,
             bodyB: bodyB, longitudeB: longitudeB, speedB: speedB,
-            aspectKinds: aspectKinds, orbPolicy: orbPolicy
+            orderedAspectKinds: orderedAspectKinds, orbPolicy: orbPolicy
         ) else { return nil }
         return Aspect(
             bodyA: bodyA, bodyB: bodyB, kind: resolution.kind,
@@ -56,12 +77,12 @@ enum AspectEngine {
     private static func resolveFields(
         bodyA: CelestialBody, longitudeA: Double, speedA: Double,
         bodyB: CelestialBody, longitudeB: Double, speedB: Double,
-        aspectKinds: Set<AspectKind>, orbPolicy: OrbPolicy
+        orderedAspectKinds: [AspectKind], orbPolicy: OrbPolicy
     ) -> Resolution? {
         resolveFields(
             longitudeA: longitudeA, speedA: speedA,
             longitudeB: longitudeB, speedB: speedB,
-            aspectKinds: aspectKinds,
+            orderedAspectKinds: orderedAspectKinds,
             allowedOrb: { orbPolicy.allowedOrb(for: $0, bodyA: bodyA, bodyB: bodyB) }
         )
     }
@@ -71,28 +92,36 @@ enum AspectEngine {
     private static func resolveFields(
         longitudeA: Double, speedA: Double,
         longitudeB: Double, speedB: Double,
-        aspectKinds: Set<AspectKind>, allowedOrb: (AspectKind) -> Double
+        orderedAspectKinds: [AspectKind], allowedOrb: (AspectKind) -> Double
     ) -> Resolution? {
-        var best: Resolution?
-        for kind in AspectKind.allCases where aspectKinds.contains(kind) {
+        var bestKind: AspectKind?
+        var bestDeviation = 0.0
+        var bestAllowedOrb = 0.0
+        for kind in orderedAspectKinds {
             let deviation = AstroCalculator.aspectSeparation(
                 longitudeA: longitudeA, longitudeB: longitudeB, aspectAngleDegrees: kind.angleDegrees
             )
             let allowed = allowedOrb(kind)
-            guard abs(deviation) <= allowed else { continue }
-            if let best, abs(best.deviation) <= abs(deviation) { continue }
-            let closingRate = AstroCalculator.aspectClosingRate(
-                speedA: speedA, speedB: speedB,
-                longitudeA: longitudeA, longitudeB: longitudeB, aspectAngleDegrees: kind.angleDegrees
-            )
-            best = Resolution(
-                kind: kind,
-                deviation: deviation, allowedOrb: allowed,
-                isApplying: closingRate > 0,
-                isExact: abs(deviation) <= partileOrbDegrees
-            )
+            let absDeviation = abs(deviation)
+            guard absDeviation <= allowed else { continue }
+            if bestKind != nil, abs(bestDeviation) <= absDeviation { continue }
+            bestKind = kind
+            bestDeviation = deviation
+            bestAllowedOrb = allowed
         }
-        return best
+
+        guard let bestKind else { return nil }
+        let closingRate = AstroCalculator.aspectClosingRate(
+            speedA: speedA, speedB: speedB,
+            longitudeA: longitudeA, longitudeB: longitudeB, aspectAngleDegrees: bestKind.angleDegrees
+        )
+        return Resolution(
+            kind: bestKind,
+            deviation: bestDeviation,
+            allowedOrb: bestAllowedOrb,
+            isApplying: closingRate > 0,
+            isExact: abs(bestDeviation) <= partileOrbDegrees
+        )
     }
 
     /// Resolve the tightest matching aspect between two participants (bodies and/or angles).
@@ -101,10 +130,22 @@ enum AspectEngine {
         participantB: AspectParticipant, longitudeB: Double, speedB: Double,
         aspectKinds: Set<AspectKind>, orbPolicy: OrbPolicy
     ) -> ChartAspect? {
+        resolveChartAspect(
+            participantA: participantA, longitudeA: longitudeA, speedA: speedA,
+            participantB: participantB, longitudeB: longitudeB, speedB: speedB,
+            orderedAspectKinds: orderedAspectKinds(aspectKinds), orbPolicy: orbPolicy
+        )
+    }
+
+    static func resolveChartAspect(
+        participantA: AspectParticipant, longitudeA: Double, speedA: Double,
+        participantB: AspectParticipant, longitudeB: Double, speedB: Double,
+        orderedAspectKinds: [AspectKind], orbPolicy: OrbPolicy
+    ) -> ChartAspect? {
         guard let resolution = resolveFields(
             longitudeA: longitudeA, speedA: speedA,
             longitudeB: longitudeB, speedB: speedB,
-            aspectKinds: aspectKinds,
+            orderedAspectKinds: orderedAspectKinds,
             allowedOrb: { orbPolicy.allowedOrb(for: $0, participantA: participantA, participantB: participantB) }
         ) else { return nil }
         return ChartAspect(
@@ -127,11 +168,12 @@ enum AspectEngine {
         aspectKinds: Set<AspectKind>,
         orbPolicy: OrbPolicy
     ) -> (grid: AspectGrid, comparisons: Int) {
-        let entries = states.sorted { (bodyOrder[$0.key] ?? 0) < (bodyOrder[$1.key] ?? 0) }
-        let bodies = entries.map(\.key)
-        let longitudes = entries.map(\.value.longitude)
-        let speeds = entries.map(\.value.speed)
+        let entries = stateEntriesInBodyOrder(states)
+        let bodies = entries.map(\.body)
+        let longitudes = entries.map(\.state.longitude)
+        let speeds = entries.map(\.state.speed)
         let n = bodies.count
+        let orderedKinds = orderedAspectKinds(aspectKinds)
 
         var matched: [Aspect] = []
         matched.reserveCapacity(n * (n - 1) / 2)
@@ -142,7 +184,7 @@ enum AspectEngine {
                 if let aspect = resolveOrdered(
                     bodyA: bodies[i], longitudeA: longitudes[i], speedA: speeds[i],
                     bodyB: bodies[j], longitudeB: longitudes[j], speedB: speeds[j],
-                    aspectKinds: aspectKinds, orbPolicy: orbPolicy
+                    orderedAspectKinds: orderedKinds, orbPolicy: orbPolicy
                 ) {
                     matched.append(aspect)
                 }
@@ -171,8 +213,9 @@ enum AspectEngine {
         aspectKinds: Set<AspectKind>,
         orbPolicy: OrbPolicy
     ) -> (grid: CrossAspectGrid, comparisons: Int) {
-        let natalEntries = natal.sorted { (bodyOrder[$0.key] ?? 0) < (bodyOrder[$1.key] ?? 0) }
-        let transitEntries = transit.sorted { (bodyOrder[$0.key] ?? 0) < (bodyOrder[$1.key] ?? 0) }
+        let natalEntries = stateEntriesInBodyOrder(natal)
+        let transitEntries = stateEntriesInBodyOrder(transit)
+        let orderedKinds = orderedAspectKinds(aspectKinds)
 
         var matched: [CrossAspect] = []
         matched.reserveCapacity(natalEntries.count * transitEntries.count)
@@ -181,18 +224,18 @@ enum AspectEngine {
             for transitEntry in transitEntries {
                 comparisons += 1
                 if let resolution = resolveFields(
-                    bodyA: natalEntry.key,
-                    longitudeA: natalEntry.value.longitude,
-                    speedA: natalEntry.value.speed,
-                    bodyB: transitEntry.key,
-                    longitudeB: transitEntry.value.longitude,
-                    speedB: transitEntry.value.speed,
-                    aspectKinds: aspectKinds,
+                    bodyA: natalEntry.body,
+                    longitudeA: natalEntry.state.longitude,
+                    speedA: natalEntry.state.speed,
+                    bodyB: transitEntry.body,
+                    longitudeB: transitEntry.state.longitude,
+                    speedB: transitEntry.state.speed,
+                    orderedAspectKinds: orderedKinds,
                     orbPolicy: orbPolicy
                 ) {
                     matched.append(CrossAspect(
-                        natalBody: natalEntry.key,
-                        transitBody: transitEntry.key,
+                        natalBody: natalEntry.body,
+                        transitBody: transitEntry.body,
                         kind: resolution.kind,
                         deviation: resolution.deviation,
                         allowedOrb: resolution.allowedOrb,
@@ -203,9 +246,21 @@ enum AspectEngine {
             }
         }
         return (CrossAspectGrid(
-            natalBodies: natalEntries.map(\.key),
-            transitBodies: transitEntries.map(\.key),
+            natalBodies: natalEntries.map(\.body),
+            transitBodies: transitEntries.map(\.body),
             aspects: matched
         ), comparisons)
+    }
+
+    private static func stateEntriesInBodyOrder(
+        _ states: [CelestialBody: CelestialState]
+    ) -> [(body: CelestialBody, state: CelestialState)] {
+        var entries: [(body: CelestialBody, state: CelestialState)] = []
+        entries.reserveCapacity(states.count)
+        for body in CelestialBody.allCases {
+            guard let state = states[body] else { continue }
+            entries.append((body, state))
+        }
+        return entries
     }
 }
