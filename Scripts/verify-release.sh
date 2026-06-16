@@ -3,7 +3,7 @@
 set -euo pipefail
 
 swift test -c release
-ASTROCORE_ENABLE_BASELINE_VERIFICATION=1 swift test -c release --filter HouseBaselineTests
+ASTROCORE_ENABLE_BASELINE_VERIFICATION=1 swift test -c release --filter Baseline
 
 derived_data_path="$(mktemp -d "${TMPDIR:-/tmp}/astrocore-release-ios.XXXXXX")"
 trap 'rm -rf "$derived_data_path"' EXIT
