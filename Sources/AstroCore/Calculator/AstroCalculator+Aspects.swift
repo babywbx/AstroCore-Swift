@@ -103,16 +103,86 @@ extension AstroCalculator {
     private static func aspectResidual(
         _ bodyA: CelestialBody, _ bodyB: CelestialBody, target: Double, jdTT: Double
     ) -> Double {
-        let la = eclipticLongitude(of: bodyA, julianDayTT: jdTT)
-        let lb = eclipticLongitude(of: bodyB, julianDayTT: jdTT)
-        return wrappedDelta(lb - la - target)
+        let longitudes = aspectLongitudePair(bodyA, bodyB, jdTT: jdTT)
+        return wrappedDelta(longitudes.b - longitudes.a - target)
     }
 
     /// d(residual)/dt = relative longitude speed; the true local slope (wrap180 is locally identity).
     private static func aspectResidualSlope(
         _ bodyA: CelestialBody, _ bodyB: CelestialBody, jdTT: Double
     ) -> Double {
-        longitudeSpeed(of: bodyB, julianDayTT: jdTT) - longitudeSpeed(of: bodyA, julianDayTT: jdTT)
+        let lower = aspectLongitudePair(bodyA, bodyB, jdTT: jdTT - speedStepDays)
+        let upper = aspectLongitudePair(bodyA, bodyB, jdTT: jdTT + speedStepDays)
+        let speedA = longitudeSpeed(fromLower: lower.a, upper: upper.a)
+        let speedB = longitudeSpeed(fromLower: lower.b, upper: upper.b)
+        return speedB - speedA
+    }
+
+    private static func aspectLongitudePair(
+        _ bodyA: CelestialBody, _ bodyB: CelestialBody, jdTT: Double
+    ) -> (a: Double, b: Double) {
+        let t = (jdTT - JulianDay.j2000) / 36525.0
+        let tau = (jdTT - JulianDay.j2000) / 365250.0
+        let needsEarth = aspectNeedsEarth(bodyA) || aspectNeedsEarth(bodyB)
+        let needsEarthMotion = aspectNeedsEarthMotion(bodyA) || aspectNeedsEarthMotion(bodyB)
+        let earth = needsEarth ? VSOP87D.earthPosition(tau: tau) : nil
+        let earthMotion = needsEarthMotion ? earth.map { PlanetaryPosition.earthMotion(tau: tau, earth: $0) } : nil
+
+        let longitudeA = aspectRawLongitude(of: bodyA, t: t, tau: tau, earth: earth, earthMotion: earthMotion)
+        if bodyA == bodyB {
+            return (longitudeA, longitudeA)
+        }
+        let longitudeB = aspectRawLongitude(of: bodyB, t: t, tau: tau, earth: earth, earthMotion: earthMotion)
+        return (longitudeA, longitudeB)
+    }
+
+    private static func aspectRawLongitude(
+        of body: CelestialBody,
+        t: Double,
+        tau: Double,
+        earth: VSOP87D.SphericalPosition?,
+        earthMotion: PlanetaryPosition.EarthMotion?
+    ) -> Double {
+        switch body {
+        case .sun:
+            return SolarPosition.compute(
+                tau: tau,
+                t: t,
+                earth: earth ?? VSOP87D.earthPosition(tau: tau)
+            ).longitude
+        case .moon:
+            return ELP2000.compute(julianCenturiesTT: t).longitude
+        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
+            if let earthMotion {
+                return PlanetaryPosition.compute(body, tau: tau, earthMotion: earthMotion).longitude
+            }
+            let earth = earth ?? VSOP87D.earthPosition(tau: tau)
+            return PlanetaryPosition.compute(
+                body,
+                tau: tau,
+                earthMotion: PlanetaryPosition.earthMotion(tau: tau, earth: earth)
+            ).longitude
+        case .meanNode, .trueNode, .lilith, .trueLilith:
+            return NodeLilith.position(body, julianCenturiesTT: t).longitude
+        }
+    }
+
+    private static func aspectNeedsEarth(_ body: CelestialBody) -> Bool {
+        switch body {
+        case .sun, .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
+            true
+        case .moon, .meanNode, .trueNode, .lilith, .trueLilith:
+            false
+        }
+    }
+
+    private static func aspectNeedsEarthMotion(_ body: CelestialBody) -> Bool {
+        switch body {
+        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
+            true
+        case .sun, .moon, .meanNode, .trueNode, .lilith, .trueLilith:
+            false
+        }
     }
 
     /// Nearest TT root of the residual to `jd` within ±window for one target angle, via the shared

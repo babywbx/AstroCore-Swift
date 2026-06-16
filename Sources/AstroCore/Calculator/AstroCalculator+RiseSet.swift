@@ -250,8 +250,13 @@ extension AstroCalculator {
         of body: CelestialBody, coordinate: GeoCoordinate,
         fromJulianDayUT start: Double, throughJulianDayUT end: Double, applyRefraction: Bool = true
     ) -> [Double] {
-        altitudeCrossings(of: body, coordinate: coordinate, from: start, through: end, applyRefraction: applyRefraction)
-            .filter(\.rising).map(\.julianDayUT)
+        riseSetCrossingsUT(
+            of: body, coordinate: coordinate,
+            fromJulianDayUT: start, throughJulianDayUT: end,
+            applyRefraction: applyRefraction
+        )
+        .filter(\.rising)
+        .map(\.julianDayUT)
     }
 
     /// All set JDs of a body in the closed UT interval, ordered by time.
@@ -259,8 +264,25 @@ extension AstroCalculator {
         of body: CelestialBody, coordinate: GeoCoordinate,
         fromJulianDayUT start: Double, throughJulianDayUT end: Double, applyRefraction: Bool = true
     ) -> [Double] {
-        altitudeCrossings(of: body, coordinate: coordinate, from: start, through: end, applyRefraction: applyRefraction)
-            .filter { !$0.rising }.map(\.julianDayUT)
+        riseSetCrossingsUT(
+            of: body, coordinate: coordinate,
+            fromJulianDayUT: start, throughJulianDayUT: end,
+            applyRefraction: applyRefraction
+        )
+        .filter { !$0.rising }
+        .map(\.julianDayUT)
+    }
+
+    /// All rise/set crossings in the closed UT interval, ordered by time and tagged by altitude slope.
+    package static func riseSetCrossingsUT(
+        of body: CelestialBody, coordinate: GeoCoordinate,
+        fromJulianDayUT start: Double, throughJulianDayUT end: Double, applyRefraction: Bool = true
+    ) -> [(julianDayUT: Double, rising: Bool)] {
+        altitudeCrossings(
+            of: body, coordinate: coordinate,
+            from: start, through: end,
+            applyRefraction: applyRefraction
+        )
     }
 
     /// JDs where the body's geometric altitude crosses an explicit target (e.g. twilight
@@ -271,6 +293,21 @@ extension AstroCalculator {
         targetAltitudeDegrees target: Double, rising: Bool,
         fromJulianDayUT start: Double, throughJulianDayUT end: Double
     ) -> [Double] {
+        altitudeCrossingEventsUT(
+            of: body, coordinate: coordinate,
+            targetAltitudeDegrees: target,
+            fromJulianDayUT: start, throughJulianDayUT: end
+        )
+        .filter { $0.rising == rising }
+        .map(\.julianDayUT)
+    }
+
+    /// All explicit target-altitude crossings in the closed UT interval, ordered and tagged by slope.
+    package static func altitudeCrossingEventsUT(
+        of body: CelestialBody, coordinate: GeoCoordinate,
+        targetAltitudeDegrees target: Double,
+        fromJulianDayUT start: Double, throughJulianDayUT end: Double
+    ) -> [(julianDayUT: Double, rising: Bool)] {
         let value: (Double) -> Double = {
             topocentricAltitudeDegrees(of: body, atJulianDayUT: $0, coordinate: coordinate) - target
         }
@@ -278,6 +315,6 @@ extension AstroCalculator {
             (value($0 + diurnalSlopeStepDays) - value($0 - diurnalSlopeStepDays)) / (2.0 * diurnalSlopeStepDays)
         }
         return RootSolver.roots(from: start, through: end, tuning: diurnalTuning(), value: value, slope: slope)
-            .filter { (slope($0) > 0) == rising }
+            .map { (julianDayUT: $0, rising: slope($0) > 0) }
     }
 }

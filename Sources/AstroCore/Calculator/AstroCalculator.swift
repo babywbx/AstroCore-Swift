@@ -2,7 +2,7 @@ import Foundation
 
 /// Single public entry point for all astronomical calculations
 public enum AstroCalculator {
-    private static let speedStepDays = 0.25
+    static let speedStepDays = 0.25
 
     /// --- Low-level (stable API) ---
     public static func julianDayUT(for moment: CivilMoment) -> Double {
@@ -277,8 +277,7 @@ public enum AstroCalculator {
         let nutationLongitude = moment.nutationLongitude
 
         // Compute Earth position once (shared by Sun + all planets)
-        let needsEarth = bodies.contains(.sun)
-            || bodies.contains(where: { $0 != .sun && $0 != .moon })
+        let needsEarth = needsEarthPosition(for: bodies)
         let earth = needsEarth ? VSOP87D.earthPosition(tau: tau) : nil
         let earthMotion = earth.map { PlanetaryPosition.earthMotion(tau: tau, earth: $0) }
 
@@ -344,6 +343,17 @@ public enum AstroCalculator {
         moment.julianDayUT + moment.deltaT / 86400.0
     }
 
+    private static func needsEarthPosition(for bodies: Set<CelestialBody>) -> Bool {
+        bodies.contains { body in
+            switch body {
+            case .sun, .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto:
+                true
+            case .moon, .meanNode, .trueNode, .lilith, .trueLilith:
+                false
+            }
+        }
+    }
+
     private static func eclipticLongitudes(
         of bodies: Set<CelestialBody>,
         julianDayTT jd: Double
@@ -351,8 +361,7 @@ public enum AstroCalculator {
         let t = (jd - JulianDay.j2000) / 36525.0
         let tau = (jd - JulianDay.j2000) / 365250.0
         let nutationArcsec = Nutation.compute(julianCenturiesTT: t).longitude
-        let needsEarth = bodies.contains(.sun)
-            || bodies.contains(where: { $0 != .sun && $0 != .moon })
+        let needsEarth = needsEarthPosition(for: bodies)
         let earth = needsEarth ? VSOP87D.earthPosition(tau: tau) : nil
         let earthMotion = earth.map { PlanetaryPosition.earthMotion(tau: tau, earth: $0) }
 
@@ -422,7 +431,7 @@ public enum AstroCalculator {
         AngleMath.normalized(degrees: raw.longitude + nutationArcsec / 3600.0)
     }
 
-    private static func longitudeSpeed(
+    static func longitudeSpeed(
         fromLower lo: Double,
         upper hi: Double
     ) -> Double {

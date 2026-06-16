@@ -38,6 +38,81 @@ struct AspectExactMomentTests {
         #expect(abs(Self.separation(.saturn, .pluto, phi, jdTT: tStar)) < 1e-7)
     }
 
+    @Test func exactAspectAtCurrentSeparationHandlesComputedPoints() throws {
+        let phi = Self.separation(.moon, .trueNode, 0, jdTT: Self.j2000TT)
+        let tStar = try #require(
+            AstroCalculator.exactAspectJulianDayTT(
+                of: .moon, and: .trueNode, aspectAngleDegrees: phi, nearJulianDayTT: Self.j2000TT
+            )
+        )
+        #expect(abs(tStar - Self.j2000TT) < 1.0)
+        #expect(abs(Self.separation(.moon, .trueNode, phi, jdTT: tStar)) < 1e-7)
+    }
+
+    @Test func exactAspectAtCurrentSeparationCoversBodyFamilies() throws {
+        let cases: [(CelestialBody, CelestialBody)] = [
+            (.sun, .moon),
+            (.sun, .mars),
+            (.moon, .jupiter),
+            (.saturn, .pluto),
+            (.mars, .trueNode),
+            (.sun, .lilith),
+            (.trueLilith, .venus)
+        ]
+
+        for (bodyA, bodyB) in cases {
+            let phi = Self.separation(bodyA, bodyB, 0, jdTT: Self.j2000TT)
+            let tStar = try #require(
+                AstroCalculator.exactAspectJulianDayTT(
+                    of: bodyA, and: bodyB,
+                    aspectAngleDegrees: phi,
+                    nearJulianDayTT: Self.j2000TT
+                )
+            )
+
+            #expect(abs(tStar - Self.j2000TT) < 1.0)
+            #expect(abs(Self.separation(bodyA, bodyB, phi, jdTT: tStar)) < 1e-7)
+        }
+    }
+
+    @Test func exactOppositionIsSymmetricAcrossBodyOrder() throws {
+        let near = Self.j2000TT + 15.0
+        let forward = try #require(
+            AstroCalculator.exactAspectJulianDayTT(
+                of: .sun, and: .moon, aspectAngleDegrees: 180, nearJulianDayTT: near
+            )
+        )
+        let reversed = try #require(
+            AstroCalculator.exactAspectJulianDayTT(
+                of: .moon, and: .sun, aspectAngleDegrees: 180, nearJulianDayTT: near
+            )
+        )
+
+        #expect(abs(forward - reversed) < 1e-8)
+        #expect(abs(Self.separation(.sun, .moon, 180, jdTT: forward)) < 1e-7)
+    }
+
+    @Test func exactAspectAtCurrentSeparationHandlesLongitudeWrap() throws {
+        let seed = try CivilMoment(
+            year: 2020, month: 3, day: 20, hour: 4, minute: 0,
+            timeZoneIdentifier: "UTC"
+        ).julianDayTT
+        let sunLongitude = AstroCalculator.eclipticLongitude(of: .sun, julianDayTT: seed)
+        #expect(sunLongitude < 1.0 || sunLongitude > 359.0)
+
+        let phi = Self.separation(.sun, .mercury, 0, jdTT: seed)
+        let tStar = try #require(
+            AstroCalculator.exactAspectJulianDayTT(
+                of: .sun, and: .mercury,
+                aspectAngleDegrees: phi,
+                nearJulianDayTT: seed
+            )
+        )
+
+        #expect(abs(tStar - seed) < 1.0)
+        #expect(abs(Self.separation(.sun, .mercury, phi, jdTT: tStar)) < 1e-7)
+    }
+
     @Test func returnsNilWhenNoAspectInTinyWindow() {
         let result = AstroCalculator.exactAspectJulianDayTT(
             of: .sun, and: .moon, aspectAngleDegrees: 90,

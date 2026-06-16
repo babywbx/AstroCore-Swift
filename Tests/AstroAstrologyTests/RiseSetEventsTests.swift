@@ -50,6 +50,30 @@ struct RiseSetEventsTests {
         #expect(rise.civilMoment.timeZoneIdentifier == "America/New_York")
     }
 
+    @Test func riseSetEventsMatchCoreCrossingsForCivilDay() throws {
+        let coordinate = try greenwich()
+        let day = try date(2020, 3, 20)
+        let start = try CivilMoment(
+            year: 2020, month: 3, day: 20, hour: 0, minute: 0,
+            timeZoneIdentifier: "UTC"
+        ).julianDayUT
+        let end = start + 1.0
+        let events = try AstrologyCalculator.riseSetEvents(of: .sun, on: day, coordinate: coordinate)
+        let rise = try #require(events.rise)
+        let set = try #require(events.set)
+        let coreRise = try #require(AstroCalculator.riseJulianDaysUT(
+            of: .sun, coordinate: coordinate,
+            fromJulianDayUT: start, throughJulianDayUT: end
+        ).first { $0 < end })
+        let coreSet = try #require(AstroCalculator.setJulianDaysUT(
+            of: .sun, coordinate: coordinate,
+            fromJulianDayUT: start, throughJulianDayUT: end
+        ).first { $0 < end })
+
+        #expect(abs(rise.julianDayUT - coreRise) < 1e-12)
+        #expect(abs(set.julianDayUT - coreSet) < 1e-12)
+    }
+
     @Test func circumpolarSunNeverSets() throws {
         let svalbard = try GeoCoordinate(latitude: 78.0, longitude: 15.0)
         let events = try AstrologyCalculator.riseSetEvents(

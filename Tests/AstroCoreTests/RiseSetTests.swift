@@ -15,6 +15,11 @@ struct RiseSetTests {
         try GeoCoordinate(latitude: 51.5, longitude: 0.0)
     }
 
+    private func expectJulianDays(_ lhs: [Double], equalTo rhs: [Double], tolerance: Double = 1e-12) {
+        #expect(lhs.count == rhs.count)
+        #expect(zip(lhs, rhs).allSatisfy { abs($0 - $1) < tolerance })
+    }
+
     @Test func upperTransitHasZeroHourAngle() throws {
         let seed = try julianDayUT(2020, 3, 20, 12)
         let transit = try #require(AstroCalculator.transitJulianDayUT(
@@ -51,6 +56,82 @@ struct RiseSetTests {
         #expect(abs(AstroCalculator.altitudeAboveStandardDegrees(
             of: .sun, atJulianDayUT: set, coordinate: coordinate
         )) < 1e-6)
+    }
+
+    @Test func batchedRiseSetCrossingsMatchPublicFilters() throws {
+        let coordinate = try greenwich()
+        let start = try julianDayUT(2020, 3, 20, 0)
+        let end = start + 1.0
+        for (body, applyRefraction) in [
+            (CelestialBody.sun, true),
+            (.sun, false),
+            (.moon, true),
+            (.venus, true)
+        ] {
+            let crossings = AstroCalculator.riseSetCrossingsUT(
+                of: body, coordinate: coordinate,
+                fromJulianDayUT: start, throughJulianDayUT: end,
+                applyRefraction: applyRefraction
+            )
+            let rises = AstroCalculator.riseJulianDaysUT(
+                of: body, coordinate: coordinate,
+                fromJulianDayUT: start, throughJulianDayUT: end,
+                applyRefraction: applyRefraction
+            )
+            let sets = AstroCalculator.setJulianDaysUT(
+                of: body, coordinate: coordinate,
+                fromJulianDayUT: start, throughJulianDayUT: end,
+                applyRefraction: applyRefraction
+            )
+
+            expectJulianDays(crossings.filter(\.rising).map(\.julianDayUT), equalTo: rises)
+            expectJulianDays(crossings.filter { !$0.rising }.map(\.julianDayUT), equalTo: sets)
+        }
+    }
+
+    @Test func batchedTargetAltitudeCrossingsMatchPublicFilters() throws {
+        let coordinate = try greenwich()
+        let start = try julianDayUT(2020, 3, 20, 0)
+        let end = start + 1.0
+        for depression in [6.0, 12.0, 18.0] {
+            let target = -depression
+            let crossings = AstroCalculator.altitudeCrossingEventsUT(
+                of: .sun, coordinate: coordinate,
+                targetAltitudeDegrees: target,
+                fromJulianDayUT: start, throughJulianDayUT: end
+            )
+            let dawns = AstroCalculator.altitudeCrossingsUT(
+                of: .sun, coordinate: coordinate, targetAltitudeDegrees: target, rising: true,
+                fromJulianDayUT: start, throughJulianDayUT: end
+            )
+            let dusks = AstroCalculator.altitudeCrossingsUT(
+                of: .sun, coordinate: coordinate, targetAltitudeDegrees: target, rising: false,
+                fromJulianDayUT: start, throughJulianDayUT: end
+            )
+
+            expectJulianDays(crossings.filter(\.rising).map(\.julianDayUT), equalTo: dawns)
+            expectJulianDays(crossings.filter { !$0.rising }.map(\.julianDayUT), equalTo: dusks)
+        }
+    }
+
+    @Test func batchedRiseSetCrossingsStayEmptyForMidnightSun() throws {
+        let svalbard = try GeoCoordinate(latitude: 78.0, longitude: 15.0)
+        let start = try julianDayUT(2020, 6, 21, 0)
+        let end = start + 1.0
+        let crossings = AstroCalculator.riseSetCrossingsUT(
+            of: .sun, coordinate: svalbard,
+            fromJulianDayUT: start, throughJulianDayUT: end
+        )
+
+        #expect(crossings.isEmpty)
+        #expect(AstroCalculator.riseJulianDaysUT(
+            of: .sun, coordinate: svalbard,
+            fromJulianDayUT: start, throughJulianDayUT: end
+        ).isEmpty)
+        #expect(AstroCalculator.setJulianDaysUT(
+            of: .sun, coordinate: svalbard,
+            fromJulianDayUT: start, throughJulianDayUT: end
+        ).isEmpty)
     }
 
     @Test func riseClimbsAndSetDescends() throws {

@@ -11,16 +11,13 @@ extension AstrologyCalculator {
             let window = try civilDayWindow(for: date)
             let timeZone = date.timeZoneIdentifier
 
-            let riseUT = AstroCalculator.riseJulianDaysUT(
+            let riseSetCrossings = AstroCalculator.riseSetCrossingsUT(
                 of: body, coordinate: coordinate,
                 fromJulianDayUT: window.startUT, throughJulianDayUT: window.endUT,
                 applyRefraction: applyRefraction
-            ).first { $0 < window.endUT }
-            let setUT = AstroCalculator.setJulianDaysUT(
-                of: body, coordinate: coordinate,
-                fromJulianDayUT: window.startUT, throughJulianDayUT: window.endUT,
-                applyRefraction: applyRefraction
-            ).first { $0 < window.endUT }
+            )
+            let riseUT = riseSetCrossings.first { $0.rising && $0.julianDayUT < window.endUT }?.julianDayUT
+            let setUT = riseSetCrossings.first { !$0.rising && $0.julianDayUT < window.endUT }?.julianDayUT
             let upperUT = AstroCalculator.transitJulianDaysUT(
                 of: body, observerLongitude: coordinate.longitude, kind: .upper,
                 fromJulianDayUT: window.startUT, throughJulianDayUT: window.endUT
@@ -61,14 +58,12 @@ extension AstrologyCalculator {
         do {
             let window = try civilDayWindow(for: date)
             let target = -depressionDegrees
-            let dawnUT = AstroCalculator.altitudeCrossingsUT(
-                of: .sun, coordinate: coordinate, targetAltitudeDegrees: target, rising: true,
+            let crossings = AstroCalculator.altitudeCrossingEventsUT(
+                of: .sun, coordinate: coordinate, targetAltitudeDegrees: target,
                 fromJulianDayUT: window.startUT, throughJulianDayUT: window.endUT
-            ).first { $0 < window.endUT }
-            let duskUT = AstroCalculator.altitudeCrossingsUT(
-                of: .sun, coordinate: coordinate, targetAltitudeDegrees: target, rising: false,
-                fromJulianDayUT: window.startUT, throughJulianDayUT: window.endUT
-            ).first { $0 < window.endUT }
+            )
+            let dawnUT = crossings.first { $0.rising && $0.julianDayUT < window.endUT }?.julianDayUT
+            let duskUT = crossings.first { !$0.rising && $0.julianDayUT < window.endUT }?.julianDayUT
             return try (
                 dawn: instant(dawnUT, timeZoneIdentifier: date.timeZoneIdentifier),
                 dusk: instant(duskUT, timeZoneIdentifier: date.timeZoneIdentifier)
