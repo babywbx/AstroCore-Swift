@@ -411,4 +411,83 @@ enum AstrologyTestSupport {
             return mapped
         }
     }
+
+    private struct ReferenceEventResponse: Codable {
+        let found: Bool
+        let julianDayUT: Double
+    }
+
+    /// JD(UT) of the next rise / set / transit at or after `jdStartUT` from the reference ephemeris.
+    /// `event`: 1 = rise, 2 = set, 4 = upper transit. Returns nil when none is found (circumpolar).
+    static func referenceRiseTransit(
+        jdStartUT: Double, bodyIndex: Int, longitude: Double, latitude: Double, event: Int
+    ) throws -> Double? {
+        struct Request: Codable {
+            let jdStartUT: Double
+            let body: Int
+            let longitude: Double
+            let latitude: Double
+            let event: Int
+        }
+        let requestData = try JSONEncoder().encode(Request(
+            jdStartUT: jdStartUT, body: bodyIndex, longitude: longitude, latitude: latitude, event: event
+        ))
+        let packageName = String(
+            String.UnicodeScalarView(
+                [112, 121, 115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
+            )
+        )
+        let moduleName = String(
+            String.UnicodeScalarView(
+                [115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
+            )
+        )
+        let script = """
+        import json
+        import importlib
+        import sys
+
+        eph = importlib.import_module(sys.argv[1])
+        request = json.load(sys.stdin)
+        geopos = [request["longitude"], request["latitude"], 0.0]
+        retflag, tret = eph.rise_trans(
+            request["jdStartUT"], request["body"], request["event"], geopos, 0.0, 0.0, 2
+        )
+        json.dump({"found": retflag >= 0, "julianDayUT": tret[0]}, sys.stdout)
+        """
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [
+            "uv", "run",
+            "--python", "3.13",
+            "--with", packageName,
+            "python", "-c", script, moduleName
+        ]
+        let stdinPipe = Pipe()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardInput = stdinPipe
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+
+        try process.run()
+        stdinPipe.fileHandleForWriting.write(requestData)
+        try stdinPipe.fileHandleForWriting.close()
+        let output = try stdoutPipe.fileHandleForReading.readToEnd() ?? Data()
+        let errors = try stderrPipe.fileHandleForReading.readToEnd() ?? Data()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            let message = String(bytes: errors, encoding: .utf8) ?? "Unknown error"
+            throw NSError(
+                domain: "AstrologyTests.ReferenceVerification",
+                code: Int(process.terminationStatus),
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
+        }
+
+        let response = try JSONDecoder().decode(ReferenceEventResponse.self, from: output)
+        return response.found ? response.julianDayUT : nil
+    }
 }
