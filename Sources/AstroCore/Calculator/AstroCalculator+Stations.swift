@@ -7,6 +7,16 @@ extension AstroCalculator {
     private static let stationSpeedTolerance = 1e-8 // deg/day
     private static let stationRootTolDays = 1e-7
 
+    private static func supportsStations(_ body: CelestialBody) -> Bool {
+        switch body {
+        case .sun, .moon, .meanNode:
+            false
+        case .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto,
+             .trueNode, .lilith, .trueLilith:
+            true
+        }
+    }
+
     /// Longitude acceleration (deg/day²) by central difference of speed; the Newton slope at a
     /// station, and the sign that classifies it.
     private static func longitudeAcceleration(
@@ -32,6 +42,7 @@ extension AstroCalculator {
         nearJulianDayTT jd: Double,
         searchWindowDays window: Double = 120.0
     ) -> Double? {
+        guard supportsStations(body) else { return nil }
         let step = min(stationSampleStepDays, 2.0 * window / stationMaxSamplesDivisor)
         return RootSolver.nearestRoot(
             near: jd,
@@ -68,7 +79,8 @@ extension AstroCalculator {
         fromJulianDayTT start: Double,
         throughJulianDayTT end: Double
     ) -> [Double] {
-        RootSolver.roots(
+        guard supportsStations(body) else { return [] }
+        return RootSolver.roots(
             from: start,
             through: end,
             tuning: stationTuning(step: stationSampleStepDays),

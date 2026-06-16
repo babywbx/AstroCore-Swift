@@ -36,8 +36,17 @@ enum RootSolver {
         value: (Double) -> Double,
         slope: (Double) -> Double
     ) -> Double? {
+        guard seed.isFinite, window.isFinite, window >= 0,
+              tuning.valueTolerance.isFinite, tuning.valueTolerance >= 0
+        else { return nil }
+
         let seedValue = value(seed)
-        if abs(seedValue) < tuning.valueTolerance { return seed }
+        guard seedValue.isFinite else { return nil }
+        if abs(seedValue) <= tuning.valueTolerance { return seed }
+        guard window > 0,
+              tuning.step.isFinite, tuning.step > 0,
+              tuning.stepTolerance.isFinite, tuning.stepTolerance > 0
+        else { return nil }
 
         var best: Double?
         var bestDistance = Double.infinity
@@ -93,7 +102,11 @@ enum RootSolver {
         value: (Double) -> Double,
         slope: (Double) -> Double
     ) -> [Double] {
-        guard end > start, tuning.step > 0 else { return [] }
+        guard start.isFinite, end.isFinite, end > start,
+              tuning.step.isFinite, tuning.step > 0,
+              tuning.valueTolerance.isFinite, tuning.valueTolerance >= 0,
+              tuning.stepTolerance.isFinite, tuning.stepTolerance > 0
+        else { return [] }
         var found: [Double] = []
         var lowT = start
         var lowValue = value(start)
@@ -124,8 +137,9 @@ enum RootSolver {
         low: Double, high: Double, gLow: Double, gHigh: Double, tuning: Tuning,
         value: (Double) -> Double, slope: (Double) -> Double
     ) -> Double? {
-        if abs(gLow) < tuning.valueTolerance { return low }
-        if abs(gHigh) < tuning.valueTolerance { return high }
+        guard gLow.isFinite, gHigh.isFinite else { return nil }
+        if abs(gLow) <= tuning.valueTolerance { return low }
+        if abs(gHigh) <= tuning.valueTolerance { return high }
         guard (gLow < 0) != (gHigh < 0) else { return nil }
         if let guardDegrees = tuning.wrapGuardDegrees, abs(gHigh - gLow) >= guardDegrees { return nil }
         return refineRoot(
@@ -139,20 +153,28 @@ enum RootSolver {
     private static func refineRoot(
         low: Double, high: Double, gLow: Double, gHigh: Double, tuning: Tuning,
         value: (Double) -> Double, slope: (Double) -> Double
-    ) -> Double {
+    ) -> Double? {
         var xLow = gLow < 0 ? low : high
         var xHigh = gLow < 0 ? high : low
         var root = 0.5 * (low + high)
         var stepOld = abs(high - low)
         var stepCurrent = stepOld
         var g = value(root)
+        guard g.isFinite else { return nil }
+        if abs(g) <= tuning.valueTolerance { return root }
         var derivative = slope(root)
 
         for _ in 0..<60 {
-            let newtonOutOfRange =
-                ((root - xHigh) * derivative - g) * ((root - xLow) * derivative - g) > 0
-            let slowConvergence = abs(2.0 * g) > abs(stepOld * derivative)
-            if newtonOutOfRange || slowConvergence {
+            let useBisection: Bool
+            if derivative.isFinite, derivative != 0 {
+                let newtonOutOfRange =
+                    ((root - xHigh) * derivative - g) * ((root - xLow) * derivative - g) > 0
+                let slowConvergence = abs(2.0 * g) > abs(stepOld * derivative)
+                useBisection = newtonOutOfRange || slowConvergence
+            } else {
+                useBisection = true
+            }
+            if useBisection {
                 stepOld = stepCurrent
                 stepCurrent = 0.5 * (xHigh - xLow)
                 root = xLow + stepCurrent
@@ -164,8 +186,11 @@ enum RootSolver {
                 root -= stepCurrent
                 if previous == root { return root }
             }
+            guard root.isFinite, stepCurrent.isFinite else { return nil }
             if abs(stepCurrent) < tuning.stepTolerance { return root }
             g = value(root)
+            guard g.isFinite else { return nil }
+            if abs(g) <= tuning.valueTolerance { return root }
             derivative = slope(root)
             if g < 0 { xLow = root } else { xHigh = root }
         }

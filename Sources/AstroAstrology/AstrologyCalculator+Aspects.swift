@@ -21,6 +21,7 @@ extension AstrologyCalculator {
     ) throws(AstrologyError) -> ChartAspectGrid {
         let states = AstroCalculator.states(of: bodies, at: moment)
         var participants: [(participant: AspectParticipant, longitude: Double, speed: Double)] = []
+        participants.reserveCapacity(bodies.count + angles.count)
         for body in bodies.sorted(by: { (AspectEngine.bodyOrder[$0] ?? 0) < (AspectEngine.bodyOrder[$1] ?? 0) }) {
             guard let state = states[body] else { continue }
             participants.append((.body(body), state.longitude, state.speed))
@@ -35,6 +36,7 @@ extension AstrologyCalculator {
         }
 
         var matched: [ChartAspect] = []
+        matched.reserveCapacity(participants.count * max(0, participants.count - 1) / 2)
         for i in 0..<participants.count {
             for j in (i + 1)..<participants.count {
                 if let aspect = AspectEngine.resolveChartAspect(

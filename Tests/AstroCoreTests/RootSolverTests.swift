@@ -92,4 +92,39 @@ struct RootSolverTests {
         )
         #expect(abs((root ?? .nan) - 3.3) < 1e-6)
     }
+
+    @Test func nearestRootRejectsInvalidSearchParameters() {
+        let zeroStep = RootSolver.Tuning(step: 0.0, valueTolerance: 1e-12, stepTolerance: 1e-12)
+        #expect(RootSolver.nearestRoot(
+            near: 0.0,
+            window: 5.0,
+            tuning: zeroStep,
+            value: { $0 * $0 + 1.0 },
+            slope: { 2.0 * $0 }
+        ) == nil)
+
+        let valid = RootSolver.Tuning(step: 0.1, valueTolerance: 1e-12, stepTolerance: 1e-12)
+        #expect(RootSolver.nearestRoot(
+            near: 0.0,
+            window: .infinity,
+            tuning: valid,
+            value: { $0 * $0 + 1.0 },
+            slope: { 2.0 * $0 }
+        ) == nil)
+    }
+
+    @Test func refineReturnsMidpointRootWithZeroDerivative() {
+        let tuning = RootSolver.Tuning(step: 2.0, valueTolerance: 1e-12, stepTolerance: 1e-12)
+        let roots = RootSolver.roots(
+            from: -1.0,
+            through: 1.0,
+            tuning: tuning,
+            value: { $0 * $0 * $0 },
+            slope: { 3.0 * $0 * $0 }
+        )
+        #expect(roots.count == 1)
+        #expect(abs(roots.first ?? .nan) < 1e-12)
+        let allFinite = roots.allSatisfy(\.isFinite)
+        #expect(allFinite)
+    }
 }
