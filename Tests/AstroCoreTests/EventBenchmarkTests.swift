@@ -54,4 +54,29 @@ struct EventBenchmarkTests {
         }
         print("station enumeration [Mercury, 1 year]: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
     }
+
+    @Test func benchmarkTransitSolve() throws {
+        let seed = try CivilMoment(
+            year: 2020, month: 3, day: 20, hour: 12, minute: 0, timeZoneIdentifier: "UTC"
+        ).julianDayUT
+        let iterations = 300
+        let result = benchmark(iterations: iterations, warmup: 20) {
+            _ = AstroCalculator.transitJulianDayUT(
+                of: .sun, observerLongitude: 0.0, kind: .upper, nearJulianDayUT: seed
+            )
+        }
+        print("transit solve [Sun upper, root nearby]: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
+    }
+
+    @Test func benchmarkRiseSolve() throws {
+        let coordinate = try GeoCoordinate(latitude: 51.5, longitude: 0.0)
+        let seed = try CivilMoment(
+            year: 2020, month: 3, day: 20, hour: 6, minute: 0, timeZoneIdentifier: "UTC"
+        ).julianDayUT
+        let iterations = 200
+        let result = benchmark(iterations: iterations, warmup: 20) {
+            _ = AstroCalculator.riseJulianDayUT(of: .sun, coordinate: coordinate, nearJulianDayUT: seed)
+        }
+        print("rise solve [Sun, root nearby]: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
+    }
 }
