@@ -7,6 +7,60 @@ extension AstrologyCalculator {
         AspectPatternDetector.patterns(in: grid)
     }
 
+    /// Aspects among bodies + chart angles at a moment/coordinate. Angles are fixed (speed 0). When
+    /// `angles` is empty the body-body result matches `aspects(for:bodies:)`; angle longitudes come
+    /// from `AnglesEngine`, and an angle undefined at the location (e.g. Vertex near the equator) is
+    /// silently dropped.
+    public static func chartAspects(
+        for moment: CivilMoment,
+        coordinate: GeoCoordinate,
+        bodies: Set<CelestialBody>,
+        angles: Set<ChartAngle> = [.ascendant, .midheaven],
+        aspectKinds: Set<AspectKind> = AspectKind.ptolemaic,
+        orbPolicy: OrbPolicy = .default
+    ) throws(AstrologyError) -> ChartAspectGrid {
+        let states = AstroCalculator.states(of: bodies, at: moment)
+        var participants: [(participant: AspectParticipant, longitude: Double, speed: Double)] = []
+        for body in bodies.sorted(by: { (AspectEngine.bodyOrder[$0] ?? 0) < (AspectEngine.bodyOrder[$1] ?? 0) }) {
+            guard let state = states[body] else { continue }
+            participants.append((.body(body), state.longitude, state.speed))
+        }
+        if !angles.isEmpty {
+            let resolved = try AnglesEngine.compute(for: moment, coordinate: coordinate)
+            for angle in angles.sorted(by: { $0.rawValue < $1.rawValue }) {
+                if let longitude = angleLongitude(angle, in: resolved) {
+                    participants.append((.angle(angle), longitude, 0.0))
+                }
+            }
+        }
+
+        var matched: [ChartAspect] = []
+        for i in 0..<participants.count {
+            for j in (i + 1)..<participants.count {
+                if let aspect = AspectEngine.resolveChartAspect(
+                    participantA: participants[i].participant,
+                    longitudeA: participants[i].longitude, speedA: participants[i].speed,
+                    participantB: participants[j].participant,
+                    longitudeB: participants[j].longitude, speedB: participants[j].speed,
+                    aspectKinds: aspectKinds, orbPolicy: orbPolicy
+                ) {
+                    matched.append(aspect)
+                }
+            }
+        }
+        return ChartAspectGrid(participants: participants.map(\.participant), aspects: matched)
+    }
+
+    private static func angleLongitude(_ angle: ChartAngle, in angles: Angles) -> Double? {
+        switch angle {
+        case .ascendant: angles.ascendant
+        case .midheaven: angles.midheaven
+        case .descendant: angles.descendant
+        case .imumCoeli: angles.imumCoeli
+        case .vertex: angles.vertex
+        }
+    }
+
     /// Single-pair aspect query; nil when the separation exceeds every kind's allowed orb.
     public static func aspect(
         between bodyA: CelestialBody,

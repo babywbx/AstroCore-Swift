@@ -58,12 +58,27 @@ enum AspectEngine {
         bodyB: CelestialBody, longitudeB: Double, speedB: Double,
         aspectKinds: Set<AspectKind>, orbPolicy: OrbPolicy
     ) -> Resolution? {
+        resolveFields(
+            longitudeA: longitudeA, speedA: speedA,
+            longitudeB: longitudeB, speedB: speedB,
+            aspectKinds: aspectKinds,
+            allowedOrb: { orbPolicy.allowedOrb(for: $0, bodyA: bodyA, bodyB: bodyB) }
+        )
+    }
+
+    /// Participant-agnostic numeric core: tightest matching aspect from longitudes, speeds, and an
+    /// `allowedOrb` closure. Used by both the body grid and the chart-angle grid.
+    private static func resolveFields(
+        longitudeA: Double, speedA: Double,
+        longitudeB: Double, speedB: Double,
+        aspectKinds: Set<AspectKind>, allowedOrb: (AspectKind) -> Double
+    ) -> Resolution? {
         var best: Resolution?
         for kind in AspectKind.allCases where aspectKinds.contains(kind) {
             let deviation = AstroCalculator.aspectSeparation(
                 longitudeA: longitudeA, longitudeB: longitudeB, aspectAngleDegrees: kind.angleDegrees
             )
-            let allowed = orbPolicy.allowedOrb(for: kind, bodyA: bodyA, bodyB: bodyB)
+            let allowed = allowedOrb(kind)
             guard abs(deviation) <= allowed else { continue }
             if let best, abs(best.deviation) <= abs(deviation) { continue }
             let closingRate = AstroCalculator.aspectClosingRate(
@@ -78,6 +93,25 @@ enum AspectEngine {
             )
         }
         return best
+    }
+
+    /// Resolve the tightest matching aspect between two participants (bodies and/or angles).
+    static func resolveChartAspect(
+        participantA: AspectParticipant, longitudeA: Double, speedA: Double,
+        participantB: AspectParticipant, longitudeB: Double, speedB: Double,
+        aspectKinds: Set<AspectKind>, orbPolicy: OrbPolicy
+    ) -> ChartAspect? {
+        guard let resolution = resolveFields(
+            longitudeA: longitudeA, speedA: speedA,
+            longitudeB: longitudeB, speedB: speedB,
+            aspectKinds: aspectKinds,
+            allowedOrb: { orbPolicy.allowedOrb(for: $0, participantA: participantA, participantB: participantB) }
+        ) else { return nil }
+        return ChartAspect(
+            a: participantA, b: participantB, kind: resolution.kind,
+            deviation: resolution.deviation, allowedOrb: resolution.allowedOrb,
+            isApplying: resolution.isApplying, isExact: resolution.isExact
+        )
     }
 
     static func canonicalOrder(

@@ -14,14 +14,14 @@ struct ChartStructureBenchmarkTests {
     private func benchmark(
         iterations: Int,
         warmup: Int = 100,
-        _ work: () -> Void
-    ) -> (perCallMicroseconds: Double, totalSeconds: Double) {
+        _ work: () throws -> Void
+    ) rethrows -> (perCallMicroseconds: Double, totalSeconds: Double) {
         for _ in 0..<warmup {
-            work()
+            try work()
         }
         let start = DispatchTime.now().uptimeNanoseconds
         for _ in 0..<iterations {
-            work()
+            try work()
         }
         let elapsedNanoseconds = DispatchTime.now().uptimeNanoseconds - start
         let totalSeconds = Double(elapsedNanoseconds) / 1000000000.0
@@ -44,5 +44,23 @@ struct ChartStructureBenchmarkTests {
             _ = AstrologyCalculator.patterns(in: grid)
         }
         print("pattern detection [12 bodies, \(grid.aspects.count) edges]: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
+    }
+
+    @Test func benchmarkChartAspects() throws {
+        let moment = try CivilMoment(
+            year: 1990, month: 8, day: 15, hour: 14, minute: 30,
+            timeZoneIdentifier: "America/New_York"
+        )
+        let coordinate = try GeoCoordinate(latitude: 40.7128, longitude: -74.0)
+        let bodies: Set<CelestialBody> = [
+            .sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto
+        ]
+        let iterations = 2000
+        let result = try benchmark(iterations: iterations, warmup: 50) {
+            _ = try AstrologyCalculator.chartAspects(
+                for: moment, coordinate: coordinate, bodies: bodies, angles: [.ascendant, .midheaven]
+            )
+        }
+        print("chartAspects [10 bodies + 2 angles]: \(formatMicroseconds(result.perCallMicroseconds)) µs/call")
     }
 }

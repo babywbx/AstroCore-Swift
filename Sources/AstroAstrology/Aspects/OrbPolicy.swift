@@ -5,13 +5,17 @@ public struct OrbPolicy: Sendable, Hashable, Codable {
     public let baseOrbs: [AspectKind: Double]
     /// Per-body max orb weight; empty means use baseOrbs directly.
     public let bodyOrbModifiers: [CelestialBody: Double]
+    /// Optional orb weight for chart angles (parallel to bodyOrbModifiers); nil = no angle widening.
+    public let angleOrbModifier: Double?
 
     public init(
         baseOrbs: [AspectKind: Double],
-        bodyOrbModifiers: [CelestialBody: Double] = [:]
+        bodyOrbModifiers: [CelestialBody: Double] = [:],
+        angleOrbModifier: Double? = nil
     ) {
         self.baseOrbs = baseOrbs
         self.bodyOrbModifiers = bodyOrbModifiers
+        self.angleOrbModifier = angleOrbModifier
     }
 
     /// Fixed per-aspect orbs from AspectKind.defaultOrbDegrees, no body weighting.
@@ -46,5 +50,31 @@ public struct OrbPolicy: Sendable, Hashable, Codable {
         let modifierB = bodyOrbModifiers[bodyB]
         guard modifierA != nil || modifierB != nil else { return base }
         return max(modifierA ?? base, modifierB ?? base) * kind.majorOrbScale
+    }
+
+    /// Max allowed orb for a (kind, participant, participant) triple. Body-body delegates to the
+    /// body rule; angle endpoints weight by `angleOrbModifier`.
+    public func allowedOrb(
+        for kind: AspectKind,
+        participantA: AspectParticipant,
+        participantB: AspectParticipant
+    ) -> Double {
+        if case .body(let a) = participantA, case .body(let b) = participantB {
+            return allowedOrb(for: kind, bodyA: a, bodyB: b)
+        }
+        let base = baseOrbs[kind] ?? kind.defaultOrbDegrees
+        let usesWeighting = !bodyOrbModifiers.isEmpty || angleOrbModifier != nil
+        guard usesWeighting, kind.isMajor else { return base }
+        let modifierA = modifier(for: participantA)
+        let modifierB = modifier(for: participantB)
+        guard modifierA != nil || modifierB != nil else { return base }
+        return max(modifierA ?? base, modifierB ?? base) * kind.majorOrbScale
+    }
+
+    private func modifier(for participant: AspectParticipant) -> Double? {
+        switch participant {
+        case .body(let body): bodyOrbModifiers[body]
+        case .angle: angleOrbModifier
+        }
     }
 }
