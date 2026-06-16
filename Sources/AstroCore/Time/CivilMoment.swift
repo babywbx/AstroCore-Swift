@@ -12,6 +12,15 @@ public struct CivilMoment: Sendable, Hashable, Codable {
         let repeatedTimeResolution: RepeatedTimeResolution
     }
 
+    private struct Components {
+        let year: Int
+        let month: Int
+        let day: Int
+        let hour: Int
+        let minute: Int
+        let second: Int
+    }
+
     public let year: Int // 1800...2100
     public let month: Int // 1...12
     public let day: Int // 1...31
@@ -82,15 +91,6 @@ public struct CivilMoment: Sendable, Hashable, Codable {
             ),
             timeZone: timeZone
         )
-        // Use exact UTC fractional year for Delta T interpolation.
-        let decimalYear = Self.fractionalYear(
-            year: utc.year,
-            month: utc.month,
-            day: utc.day,
-            hour: utc.hour,
-            minute: utc.minute,
-            second: utc.second
-        )
         let dayFraction =
             Double(utc.day) + Double(utc.hour) / 24.0 + Double(utc.minute) / 1440.0
                 + Double(utc.second) / 86400.0
@@ -98,6 +98,38 @@ public struct CivilMoment: Sendable, Hashable, Codable {
             year: utc.year,
             month: utc.month,
             dayFraction: dayFraction
+        )
+        self.init(
+            local: Components(
+                year: year, month: month, day: day,
+                hour: hour, minute: minute, second: second
+            ),
+            utc: Components(
+                year: utc.year, month: utc.month, day: utc.day,
+                hour: utc.hour, minute: utc.minute, second: utc.second
+            ),
+            julianDayUT: julianDayUT,
+            timeZoneIdentifier: timeZoneIdentifier,
+            repeatedTimeResolution: repeatedTimeResolution
+        )
+    }
+
+    /// Shared designated initializer: caches all astronomical quantities from the authoritative
+    /// `julianDayUT`. Delta T interpolation uses the exact UTC fractional year.
+    private init(
+        local: Components,
+        utc: Components,
+        julianDayUT: Double,
+        timeZoneIdentifier: String,
+        repeatedTimeResolution: RepeatedTimeResolution
+    ) {
+        let decimalYear = Self.fractionalYear(
+            year: utc.year,
+            month: utc.month,
+            day: utc.day,
+            hour: utc.hour,
+            minute: utc.minute,
+            second: utc.second
         )
         let deltaT = DeltaT.deltaT(decimalYear: decimalYear)
         let julianCenturiesTT = JulianDay.julianCenturiesTT(
@@ -119,12 +151,12 @@ public struct CivilMoment: Sendable, Hashable, Codable {
             trueObliquity: trueObliquity
         )
 
-        self.year = year
-        self.month = month
-        self.day = day
-        self.hour = hour
-        self.minute = minute
-        self.second = second
+        self.year = local.year
+        self.month = local.month
+        self.day = local.day
+        self.hour = local.hour
+        self.minute = local.minute
+        self.second = local.second
         self.timeZoneIdentifier = timeZoneIdentifier
         self.repeatedTimeResolution = repeatedTimeResolution
         self.cachedDecimalYear = decimalYear
@@ -143,12 +175,42 @@ public struct CivilMoment: Sendable, Hashable, Codable {
         self.cachedGreenwichApparentSiderealTime = greenwichApparentSiderealTime
     }
 
+    /// Build a civil moment from a UT Julian Day, rendered into the given time zone.
+    /// UT→local is single-valued, so no repeated-time resolution is needed; `julianDayUT`
+    /// stays the authoritative instant while civil fields are integer-second display values.
+    public init(julianDayUT: Double, timeZoneIdentifier: String) throws(AstroError) {
+        guard julianDayUT.isFinite else {
+            throw .invalidCivilMoment(detail: "Julian Day must be finite, got \(julianDayUT)")
+        }
+        guard let timeZone = TimeZone(identifier: timeZoneIdentifier) else {
+            throw .invalidTimeZoneIdentifier(timeZoneIdentifier)
+        }
+        let utc = Self.civilComponents(fromJulianDay: julianDayUT)
+        let instant = try Self.utcDate(from: utc)
+        let offsetSeconds = timeZone.secondsFromGMT(for: instant)
+        let local = Self.civilComponents(
+            fromJulianDay: julianDayUT + Double(offsetSeconds) / 86400.0
+        )
+        guard (1800...2100).contains(local.year) else {
+            throw .unsupportedYearRange(local.year)
+        }
+        self.init(
+            local: local,
+            utc: utc,
+            julianDayUT: julianDayUT,
+            timeZoneIdentifier: timeZoneIdentifier,
+            repeatedTimeResolution: .reject
+        )
+    }
+
     /// Decimal year for Delta T lookup, based on the exact UTC instant.
     var decimalYear: Double {
         cachedDecimalYear
     }
 
-    var julianDayUT: Double { cachedJulianDayUT }
+    public var julianDayUT: Double { cachedJulianDayUT }
+    /// JD in TT = JD(UT) + ΔT/86400.
+    public var julianDayTT: Double { cachedJulianDayUT + cachedDeltaT / 86400.0 }
     var deltaT: Double { cachedDeltaT }
     var julianCenturiesTT: Double { cachedJulianCenturiesTT }
     var julianMillenniaTT: Double { cachedJulianMillenniaTT }
@@ -399,6 +461,39 @@ public struct CivilMoment: Sendable, Hashable, Codable {
             matchingPolicy: .strict,
             repeatedTimePolicy: repeatedTimePolicy,
             direction: .forward
+        )
+    }
+
+    /// A `Date` for the given UTC civil components, used only to read the zone's offset.
+    private static func utcDate(from components: Components) throws(AstroError) -> Date {
+        var dateComponents = DateComponents()
+        dateComponents.year = components.year
+        dateComponents.month = components.month
+        dateComponents.day = components.day
+        dateComponents.hour = components.hour
+        dateComponents.minute = components.minute
+        dateComponents.second = components.second
+        dateComponents.timeZone = utcTimeZone
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = utcTimeZone
+        guard let date = calendar.date(from: dateComponents) else {
+            throw .dateConversionFailed
+        }
+        return date
+    }
+
+    /// Render civil Y/M/D/h/m/s from a JD, rounding to the nearest whole second with full carry.
+    private static func civilComponents(fromJulianDay jd: Double) -> Components {
+        let snappedSeconds = (jd * 86400.0).rounded()
+        let date = JulianDay.calendarDate(julianDay: snappedSeconds / 86400.0)
+        let secondOfDay = Int(date.secondsOfDay.rounded())
+        return Components(
+            year: date.year,
+            month: date.month,
+            day: date.day,
+            hour: secondOfDay / 3600,
+            minute: (secondOfDay / 60) % 60,
+            second: secondOfDay % 60
         )
     }
 

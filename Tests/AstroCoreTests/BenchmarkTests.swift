@@ -29,6 +29,25 @@ struct BenchmarkTests {
         return (perCallMicroseconds, totalSeconds)
     }
 
+    @Test func benchmarkCivilMomentConstruction() throws {
+        let iterations = 5000
+        let forward = try benchmark(iterations: iterations) {
+            _ = try CivilMoment(
+                year: 2000, month: 6, day: 21, hour: 12, minute: 0,
+                timeZoneIdentifier: "America/New_York"
+            )
+        }
+        print("🏙️  CivilMoment forward: \(formatMicroseconds(forward.perCallMicroseconds)) µs/call")
+        let jd = try CivilMoment(
+            year: 2000, month: 6, day: 21, hour: 12, minute: 0,
+            timeZoneIdentifier: "America/New_York"
+        ).julianDayUT
+        let bridge = try benchmark(iterations: iterations) {
+            _ = try CivilMoment(julianDayUT: jd, timeZoneIdentifier: "America/New_York")
+        }
+        print("🌉  CivilMoment JD bridge: \(formatMicroseconds(bridge.perCallMicroseconds)) µs/call")
+    }
+
     @Test func benchmarkSunPosition() throws {
         let moment = try CivilMoment(
             year: 2000, month: 6, day: 21, hour: 12, minute: 0,

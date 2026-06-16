@@ -19,6 +19,29 @@ private let julianDayCases: [JulianDayCase] = [
     .init(name: "apr-1987", year: 1987, month: 4, dayFraction: 10.0, expected: 2446895.5)
 ]
 
+struct BridgeFixture: Sendable, CustomStringConvertible {
+    let name: String
+    let year: Int
+    let month: Int
+    let day: Int
+    let hour: Int
+    let minute: Int
+    let second: Int
+    let timeZoneIdentifier: String
+
+    var description: String { name }
+}
+
+private let bridgeFixtures: [BridgeFixture] = [
+    .init(name: "utc-noon", year: 2000, month: 6, day: 21, hour: 12, minute: 0, second: 0, timeZoneIdentifier: "UTC"),
+    .init(name: "ny-winter", year: 2000, month: 1, day: 1, hour: 19, minute: 30, second: 15, timeZoneIdentifier: "America/New_York"),
+    .init(name: "ny-summer-dst", year: 2021, month: 7, day: 4, hour: 9, minute: 5, second: 0, timeZoneIdentifier: "America/New_York"),
+    .init(name: "shanghai-cross-year", year: 2001, month: 1, day: 1, hour: 2, minute: 0, second: 0, timeZoneIdentifier: "Asia/Shanghai"),
+    .init(name: "ny-cross-year-back", year: 1999, month: 12, day: 31, hour: 23, minute: 0, second: 0, timeZoneIdentifier: "America/New_York"),
+    .init(name: "kolkata-half-hour-leap", year: 2000, month: 2, day: 29, hour: 6, minute: 45, second: 30, timeZoneIdentifier: "Asia/Kolkata"),
+    .init(name: "tokyo-evening", year: 2024, month: 11, day: 15, hour: 21, minute: 0, second: 0, timeZoneIdentifier: "Asia/Tokyo")
+]
+
 @Suite("Time and Foundation")
 struct TimeAndFoundationTests {
     @Test(arguments: julianDayCases)
@@ -29,6 +52,86 @@ struct TimeAndFoundationTests {
             dayFraction: testCase.dayFraction
         )
         #expect(abs(julianDay - testCase.expected) < 0.000001)
+    }
+
+    @Test(arguments: julianDayCases)
+    func calendarDateInvertsJulianDay(_ testCase: JulianDayCase) {
+        let date = JulianDay.calendarDate(julianDay: testCase.expected)
+        #expect(date.year == testCase.year)
+        #expect(date.month == testCase.month)
+        let dayFraction = Double(date.day) + date.secondsOfDay / 86400.0
+        let roundTrip = JulianDay.julianDay(
+            year: date.year,
+            month: date.month,
+            dayFraction: dayFraction
+        )
+        #expect(abs(roundTrip - testCase.expected) < 1e-9)
+    }
+
+    @Test func calendarDateRecoversCivilFields() {
+        let noon = JulianDay.calendarDate(julianDay: 2451545.0)
+        #expect(noon.year == 2000 && noon.month == 1 && noon.day == 1)
+        #expect(abs(noon.secondsOfDay - 43200.0) < 1e-6)
+
+        let midnight = JulianDay.calendarDate(julianDay: 2451544.5)
+        #expect(midnight.year == 2000 && midnight.month == 1 && midnight.day == 1)
+        #expect(abs(midnight.secondsOfDay) < 1e-6)
+
+        let endOfDay = JulianDay.calendarDate(julianDay: 2451545.5 - 1.0 / 86400.0)
+        #expect(endOfDay.year == 2000 && endOfDay.month == 1 && endOfDay.day == 1)
+        #expect(abs(endOfDay.secondsOfDay - 86399.0) < 1e-3)
+    }
+
+    @Test(arguments: bridgeFixtures)
+    func bridgeRoundTripsJulianDayAndCivilFields(_ fixture: BridgeFixture) throws {
+        let original = try CivilMoment(
+            year: fixture.year,
+            month: fixture.month,
+            day: fixture.day,
+            hour: fixture.hour,
+            minute: fixture.minute,
+            second: fixture.second,
+            timeZoneIdentifier: fixture.timeZoneIdentifier
+        )
+        let bridged = try CivilMoment(
+            julianDayUT: original.julianDayUT,
+            timeZoneIdentifier: fixture.timeZoneIdentifier
+        )
+        #expect(abs(bridged.julianDayUT - original.julianDayUT) < 1e-9)
+        #expect(bridged.year == fixture.year)
+        #expect(bridged.month == fixture.month)
+        #expect(bridged.day == fixture.day)
+        #expect(bridged.hour == fixture.hour)
+        #expect(bridged.minute == fixture.minute)
+        #expect(bridged.second == fixture.second)
+        #expect(bridged.timeZoneIdentifier == fixture.timeZoneIdentifier)
+        #expect(bridged == original)
+    }
+
+    @Test func julianDayTTAddsDeltaTToUT() throws {
+        let moment = try CivilMoment(
+            year: 2000,
+            month: 1,
+            day: 1,
+            hour: 12,
+            minute: 0,
+            timeZoneIdentifier: "UTC"
+        )
+        #expect(abs(moment.julianDayTT - (moment.julianDayUT + moment.deltaT / 86400.0)) < 1e-12)
+        #expect(moment.julianDayTT > moment.julianDayUT)
+    }
+
+    @Test func bridgeRejectsOutOfRangeAndInvalidInputs() {
+        let jd1700 = JulianDay.julianDay(year: 1700, month: 1, dayFraction: 1.5)
+        #expect(throws: AstroError.unsupportedYearRange(1700)) {
+            try CivilMoment(julianDayUT: jd1700, timeZoneIdentifier: "UTC")
+        }
+        #expect(throws: AstroError.invalidTimeZoneIdentifier("Invalid/Zone")) {
+            try CivilMoment(julianDayUT: 2451545.0, timeZoneIdentifier: "Invalid/Zone")
+        }
+        #expect(throws: AstroError.self) {
+            try CivilMoment(julianDayUT: .infinity, timeZoneIdentifier: "UTC")
+        }
     }
 
     @Test func julianTimeScalesStayConsistent() {
