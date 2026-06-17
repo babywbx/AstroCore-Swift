@@ -13,18 +13,24 @@ enum VSOP87DParser {
         var currentKey = ""
 
         for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
             if line.contains("VSOP87") && line.contains("*T**") {
-                let coordChar = parseCoordinateChar(line)
-                let power = parsePower(line)
+                guard let coordChar = parseCoordinateChar(line),
+                      let power = parsePower(line)
+                else {
+                    throw DataGenError.parseFailed(detail: "Invalid VSOP header: \(line)")
+                }
                 currentKey = "\(coordChar)\(power)"
                 if series[currentKey] == nil {
                     series[currentKey] = []
                 }
-            } else if !line.trimmingCharacters(in: .whitespaces).isEmpty
-                && !currentKey.isEmpty
-            {
+            } else if !currentKey.isEmpty {
                 // Term line: fixed-width format
-                guard line.count >= 131 else { continue }
+                guard line.count >= 131 else {
+                    throw DataGenError.parseFailed(detail: "Invalid VSOP term width: \(line)")
+                }
                 let aStr = extractField(line, start: 79, end: 96)
                 let bStr = extractField(line, start: 97, end: 110)
                 let cStr = extractField(line, start: 111, end: 130)
@@ -33,14 +39,24 @@ enum VSOP87DParser {
                       let b = Double(bStr),
                       let c = Double(cStr),
                       a.isFinite && b.isFinite && c.isFinite
-                else { continue }
+                else {
+                    throw DataGenError.parseFailed(detail: "Invalid VSOP term values: \(line)")
+                }
                 series[currentKey]?.append((a: a, b: b, c: c))
+            } else {
+                throw DataGenError.parseFailed(detail: "Unexpected VSOP content before header: \(line)")
             }
         }
 
         // Validate planet name is alphanumeric
         guard planetName.allSatisfy(\.isLetter) else {
             throw DataGenError.invalidData(detail: "Invalid planet name: \(planetName)")
+        }
+        let requiredKeys = ["L0", "B0", "R0"]
+        guard requiredKeys.allSatisfy({ series[$0]?.isEmpty == false }) else {
+            throw DataGenError.parseFailed(
+                detail: "Missing required VSOP series for \(planetName): \(requiredKeys)"
+            )
         }
 
         // Generate Swift source
@@ -70,7 +86,9 @@ enum VSOP87DParser {
                   ("0"..."5").contains(String(key.last!))
             else { continue }
 
-            let terms = series[key]!
+            guard let terms = series[key], !terms.isEmpty else {
+                throw DataGenError.parseFailed(detail: "Empty VSOP series \(key)")
+            }
             swift += "        static let \(key): [(Double, Double, Double)] = [\n"
             for t in terms {
                 // Serialize from parsed Double values (not raw strings)
@@ -84,7 +102,7 @@ enum VSOP87DParser {
         try swift.write(to: output, atomically: true, encoding: .utf8)
     }
 
-    private static func parseCoordinateChar(_ line: String) -> String {
+    private static func parseCoordinateChar(_ line: String) -> String? {
         // Look for "VARIABLE N" where N is 1(L), 2(B), 3(R)
         if let range = line.range(of: "VARIABLE") {
             let after = line[range.upperBound...].trimmingCharacters(in: .whitespaces)
@@ -92,18 +110,21 @@ enum VSOP87DParser {
             if after.hasPrefix("2") { return "B" }
             if after.hasPrefix("3") { return "R" }
         }
-        return "L"
+        return nil
     }
 
-    private static func parsePower(_ line: String) -> Int {
+    private static func parsePower(_ line: String) -> Int? {
         // Look for "*T**N" where N is 0-5
         if let range = line.range(of: "*T**") {
             let after = line[range.upperBound...]
-            if let firstChar = after.first, let digit = Int(String(firstChar)) {
+            if let firstChar = after.first,
+               let digit = Int(String(firstChar)),
+               (0...5).contains(digit)
+            {
                 return digit
             }
         }
-        return 0
+        return nil
     }
 
     private static func extractField(_ line: String, start: Int, end: Int) -> String {

@@ -33,6 +33,17 @@ struct CityIndexTests {
         #expect(losAngeles[0].name == "Los Angeles")
     }
 
+    @Test func searchFoldsDiacritics() {
+        let saoPaulo = CityIndex.shared.search("Sao Paulo", limit: 5)
+        #expect(saoPaulo.contains { $0.name == "São Paulo" && $0.countryCode == "BR" })
+
+        let bogota = CityIndex.shared.search("Bogota", limit: 5)
+        #expect(bogota.contains { $0.name == "Bogotá" && $0.countryCode == "CO" })
+
+        let zurich = CityIndex.shared.search("Zurich", limit: 5)
+        #expect(zurich.contains { $0.name == "Zürich" && $0.countryCode == "CH" })
+    }
+
     @Test func searchRejectsNonPositiveLimitsWithoutCrashing() {
         #expect(CityIndex.shared.search("Tokyo", limit: 0).isEmpty)
         #expect(CityIndex.shared.search("Tokyo", limit: -1).isEmpty)

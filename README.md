@@ -3,10 +3,11 @@
 # AstroCore
 
 A high-precision Western astrology computation library in pure Swift, covering 1800–2100.<br/>
-Tiered local-validation accuracy, zero dependencies, thread-safe.
+Tiered local-validation accuracy, zero runtime dependencies, thread-safe.
 
-> v3 planning is in progress. This README still describes the stable 2.0.0 API;
-> see [docs/README.md](./docs/README.md) for design documents.
+> This README describes the v3 package split:
+> `AstroCore` for low-level astronomy, `AstroAstrology` for astrology models,
+> and `AstroCoreLocations` for optional city lookup data.
 
 [简体中文](./README.zh-CN.md) · [Report Issue][github-issues-link] · [Releases][github-release-link]
 
@@ -83,7 +84,7 @@ Add to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wbx1-Ltd/AstroCore-Swift.git", from: "2.0.0"),
+    .package(name: "AstroCore", url: "https://github.com/wbx1-Ltd/AstroCore-Swift.git", from: "3.0.0"),
 ]
 ```
 
@@ -93,18 +94,22 @@ Then add as a target dependency:
 .target(
     name: "YourTarget",
     dependencies: [
-        "AstroCore",              // ~1.7 MB — core computation
-        "AstroCoreLocations",     // +2 MB on top (~3.7 MB total)
+        .product(name: "AstroCore", package: "AstroCore"),                 // core astronomy
+        .product(name: "AstroAstrology", package: "AstroCore"),            // signs, houses, charts
+        .product(name: "AstroCoreLocations", package: "AstroCore"),        // optional city lookup
     ]
 ),
 ```
 
-If your app already has city/coordinate data, import only the core:
+If your app already has city/coordinate data, skip the optional locations product:
 
 ```swift
 .target(
     name: "YourTarget",
-    dependencies: ["AstroCore"]  // only ~1.7 MB
+    dependencies: [
+        .product(name: "AstroCore", package: "AstroCore"),
+        .product(name: "AstroAstrology", package: "AstroCore"),
+    ]
 ),
 ```
 
@@ -118,7 +123,10 @@ Or in Xcode: **File → Add Package Dependencies…** → paste the URL above.
 
 ## 🚀 Usage
 
-`AstroCore` only requires coordinates (`GeoCoordinate`) and a timezone (`timeZoneIdentifier`) — no city data needed.
+`AstroCore` provides the low-level astronomy primitives. `AstroAstrology`
+builds signs, houses, Gauquelin sectors, natal charts, and aspects on top of
+those primitives. Neither requires city data when you already have coordinates
+(`GeoCoordinate`) and a timezone (`timeZoneIdentifier`).
 
 If a local wall-clock time falls inside a DST fall-back repeat hour, pass
 `repeatedTimeResolution: .firstOccurrence` or `.lastOccurrence` to select the
@@ -126,6 +134,7 @@ exact instant explicitly.
 
 ```swift
 import AstroCore
+import AstroAstrology
 ```
 
 ### ☀️ Sun Sign
@@ -187,7 +196,7 @@ print(asc.degreeInSign)          // 0.93°
 ### 🏠 House Systems
 
 ```swift
-let houses = try AstroCalculator.houses(
+let houses = try AstrologyCalculator.houses(
     for: moment,
     coordinate: coord,
     system: .placidus,
@@ -215,7 +224,7 @@ Polar fallback strategies:
 Independent Gauquelin sectors:
 
 ```swift
-let sectors = try AstroCalculator.gauquelinSectors(
+let sectors = try AstrologyCalculator.gauquelinSectors(
     for: moment,
     coordinate: coord
 )
@@ -227,7 +236,7 @@ print(sectors.sectors[18].eclipticLongitude)      // sector 19 = DSC
 print(sectors.sectors[27].eclipticLongitude)      // sector 28 = IC
 ```
 
-Not part of 2.0.0 yet:
+Not part of the v3 public API yet:
 `Krusinski-Pisa-Goelzer`, `APC`, `Sunshine (Treindl)`,
 `Sunshine (Makransky)`, `Pullen SD`, `Pullen SR`
 
@@ -240,7 +249,7 @@ let moment = try CivilMoment(
 )
 let coord = try GeoCoordinate(latitude: 40.7128, longitude: -74.0060)
 
-let natal = try AstroCalculator.natalPositions(
+let natal = try AstrologyCalculator.natalPositions(
     for: moment,
     coordinate: coord,
     bodies: [.sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn],
@@ -259,7 +268,7 @@ for (body, pos) in natal.bodies {
 If you also want houses and angles in the same response:
 
 ```swift
-let chart = try AstroCalculator.natalChart(
+let chart = try AstrologyCalculator.natalChart(
     for: moment,
     coordinate: coord,
     system: .placidus
@@ -328,7 +337,10 @@ Validated at 2000-01-01 12:00 UTC, apparent ecliptic longitude:
 
 > **Listed core bodies are < 1 arcsecond in the local validation set.**
 
-Cross-validated across 750+ epochs spanning 1850–2100.
+The committed CI proves the checked release tests plus gated reference baselines
+enabled by `ASTROCORE_ENABLE_BASELINE_VERIFICATION=1`. Broader unpublished
+epoch sweeps should be treated as local validation data until their fixtures are
+checked into the repository.
 
 <div align="right">
 
@@ -372,7 +384,7 @@ Validation:
 - ✅ **House systems** — 16 systems checked for cusp validity, angle alignment, and polar fallback behavior
 - ✅ **Gauquelin sectors** — independent 36-sector model with clockwise numbering and baseline coverage
 - ✅ **Edge cases** — year boundaries (1800/2100), polar latitudes, sign boundaries
-- ✅ **Regression baselines** — automatic numerical drift detection in CI and local release verification (< 10⁻¹⁰°)
+- ✅ **Regression baselines** — gated reference checks in CI and local release verification for houses, Gauquelin sectors, aspects, rise/set/transit, and stations
 
 <div align="right">
 
@@ -386,14 +398,21 @@ Validation:
 
 | Type | Description |
 |------|-------------|
-| `AstroCalculator` | Main entry — Sun/Moon/planet/ascendant/house/natal chart |
+| `AstroCalculator` | Main entry — Julian day, Sun/Moon/planet positions, motion states, and low-level angles |
 | `CivilMoment` | Civil time (year/month/day/hour/minute/second + IANA timezone, with explicit repeated-time resolution when needed) |
 | `RepeatedTimeResolution` | DST fall-back ambiguity policy: reject, first occurrence, or last occurrence |
 | `GeoCoordinate` | Geographic coordinate with range-checked latitude and longitude |
-| `CelestialBody` | Body enum — `.sun`, `.moon`, `.mercury`, `.venus`, `.mars`, `.jupiter`, `.saturn` |
-| `ZodiacSign` | 12 zodiac signs with name, emoji, start longitude, `contains()` |
 | `CelestialPosition` | Lightweight body position (ecliptic longitude/latitude) |
 | `CelestialState` | Motion-rich body state (position + longitude speed/retrograde) |
+| `CelestialBody` | Body enum — Sun through Pluto plus lunar nodes and Lilith variants |
+| `AstroError` | Typed core errors (invalid coordinate, unsupported year, missing ephemeris data) |
+
+### AstroAstrology (Astrology Layer)
+
+| Type | Description |
+|------|-------------|
+| `AstrologyCalculator` | Main astrology entry — zodiac mapping, ascendant, houses, Gauquelin sectors, natal charts, and aspects |
+| `ZodiacSign` | 12 zodiac signs with name, emoji, start longitude, `contains()` |
 | `AscendantResult` | Ascendant (ecliptic longitude, sign, degree in sign, boundary flag) |
 | `NatalPositions` | Batch result (optional ascendant + body dictionary) |
 | `NatalStates` | Motion-rich batch result (optional ascendant + body state dictionary) |
@@ -405,7 +424,8 @@ Validation:
 | `GauquelinSector` | One clockwise Gauquelin sector boundary (`1...36`) |
 | `Angles` | ASC / MC / DSC / IC and optional vertex |
 | `PolarFallback` | Fallback strategy when a house system is undefined at polar latitudes |
-| `AstroError` | Typed errors (invalid coordinate, unsupported year, missing coordinate, polar fallback error) |
+| `AspectKind` / `AspectGrid` | Aspect definitions and matched body-body aspect grids |
+| `AstrologyError` | Typed astrology-layer errors (missing coordinate, polar fallback error, wrapped core errors) |
 
 ### AstroCoreLocations (Optional)
 
@@ -425,7 +445,7 @@ Validation:
 | | Item | Range |
 |-|------|-------|
 | 📆 | Year range | 1800 — 2100 (301 years) |
-| 🪐 | Bodies | Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn |
+| 🪐 | Bodies | Sun, Moon, Mercury, Venus, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto, lunar nodes, Lilith variants |
 | 🏠 | House systems | 16 systems: Equal (ASC/MC), Whole Sign, Vehlow, Porphyry, Sripati, Placidus, Koch, Alcabitius, Campanus, Regiomontanus, Morinus, Topocentric, Horizontal, Meridian / Axial Rotation, Carter |
 | 📈 | Gauquelin sectors | 36-sector statistical model via dedicated API |
 | 🖥️ | Platforms | iOS 15+ · macOS 12+ · tvOS 15+ · watchOS 8+ · visionOS 1+ |

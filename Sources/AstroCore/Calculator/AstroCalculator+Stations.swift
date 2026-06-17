@@ -42,7 +42,9 @@ extension AstroCalculator {
         nearJulianDayTT jd: Double,
         searchWindowDays window: Double = 120.0
     ) -> Double? {
-        guard supportsStations(body) else { return nil }
+        guard supportsStations(body), isSupportedJulianDay(jd),
+              window.isFinite, window >= 0
+        else { return nil }
         let step = min(stationSampleStepDays, 2.0 * window / stationMaxSamplesDivisor)
         return RootSolver.nearestRoot(
             near: jd,
@@ -60,7 +62,10 @@ extension AstroCalculator {
         nearJulianDayUT jd: Double,
         searchWindowDays window: Double = 120.0
     ) -> Double? {
-        let seedTT = jd + deltaTSeconds(julianDayUT: jd) / 86400.0
+        guard isSupportedJulianDay(jd), window.isFinite, window >= 0 else { return nil }
+        let deltaT = deltaTSeconds(julianDayUT: jd)
+        guard deltaT.isFinite else { return nil }
+        let seedTT = jd + deltaT / 86400.0
         guard let stationTT = stationJulianDayTT(
             of: body, nearJulianDayTT: seedTT, searchWindowDays: window
         ) else { return nil }
@@ -70,7 +75,8 @@ extension AstroCalculator {
     /// Direction of motion change at a station: `.retrograde` when the speed turns from positive to
     /// negative (acceleration < 0), `.direct` otherwise.
     public static func stationKind(of body: CelestialBody, julianDayTT jd: Double) -> StationKind {
-        longitudeAcceleration(of: body, julianDayTT: jd) < 0 ? .retrograde : .direct
+        guard isSupportedJulianDay(jd) else { return .direct }
+        return longitudeAcceleration(of: body, julianDayTT: jd) < 0 ? .retrograde : .direct
     }
 
     /// All station JDs in the closed TT interval, ordered by time, via a forward sign-change scan.
@@ -79,7 +85,7 @@ extension AstroCalculator {
         fromJulianDayTT start: Double,
         throughJulianDayTT end: Double
     ) -> [Double] {
-        guard supportsStations(body) else { return [] }
+        guard supportsStations(body), isSupportedJulianDay(start), isSupportedJulianDay(end) else { return [] }
         return RootSolver.roots(
             from: start,
             through: end,

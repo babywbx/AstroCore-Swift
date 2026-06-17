@@ -3,10 +3,11 @@
 # AstroCore
 
 纯 Swift 实现的高精度西洋占星天文计算库，覆盖 1800–2100 年。<br/>
-本地验证、分级精度声明，零依赖，线程安全。
+本地验证、分级精度声明，零运行时依赖，线程安全。
 
-> v3 重构规划正在整理中。当前 README 仍描述 2.0.0 稳定能力;设计文档见
-> [docs/README.md](./docs/README.md)。
+> 本 README 描述 v3 package 拆分：
+> `AstroCore` 提供底层天文计算，`AstroAstrology` 提供占星模型，
+> `AstroCoreLocations` 提供可选城市检索数据。
 
 [English](./README.md) · [报告问题][github-issues-link] · [更新日志][github-release-link]
 
@@ -83,7 +84,7 @@
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/wbx1-Ltd/AstroCore-Swift.git", from: "2.0.0"),
+    .package(name: "AstroCore", url: "https://github.com/wbx1-Ltd/AstroCore-Swift.git", from: "3.0.0"),
 ]
 ```
 
@@ -93,18 +94,22 @@ dependencies: [
 .target(
     name: "YourTarget",
     dependencies: [
-        "AstroCore",              // ~1.7 MB — 核心天文计算
-        "AstroCoreLocations",     // 额外约 +2 MB（合计约 ~3.7 MB）
+        .product(name: "AstroCore", package: "AstroCore"),                 // 核心天文计算
+        .product(name: "AstroAstrology", package: "AstroCore"),            // 星座、宫位、星盘
+        .product(name: "AstroCoreLocations", package: "AstroCore"),        // 可选城市检索
     ]
 ),
 ```
 
-如果你的 App 已有城市/坐标数据，可以只引入核心模块：
+如果你的 App 已有城市/坐标数据，可以不引入可选城市模块：
 
 ```swift
 .target(
     name: "YourTarget",
-    dependencies: ["AstroCore"]  // 只需 ~1.7 MB
+    dependencies: [
+        .product(name: "AstroCore", package: "AstroCore"),
+        .product(name: "AstroAstrology", package: "AstroCore"),
+    ]
 ),
 ```
 
@@ -118,7 +123,9 @@ dependencies: [
 
 ## 🚀 使用
 
-`AstroCore` 只需要坐标 (`GeoCoordinate`) 和时区 (`timeZoneIdentifier`) 即可完成所有天文计算，不依赖任何城市数据。
+`AstroCore` 提供底层天文计算原语；`AstroAstrology` 在其上提供星座、
+宫位、Gauquelin 扇区、本命盘和相位。只要你已有坐标 (`GeoCoordinate`)
+和时区 (`timeZoneIdentifier`)，两者都不依赖城市数据。
 
 如果本地墙上时间落在夏令时回拨产生的重复小时内，请额外传入
 `repeatedTimeResolution: .firstOccurrence` 或 `.lastOccurrence`，
@@ -126,6 +133,7 @@ dependencies: [
 
 ```swift
 import AstroCore
+import AstroAstrology
 ```
 
 ### ☀️ 太阳星座
@@ -187,7 +195,7 @@ print(asc.degreeInSign)          // 0.93°
 ### 🏠 宫位系统
 
 ```swift
-let houses = try AstroCalculator.houses(
+let houses = try AstrologyCalculator.houses(
     for: moment,
     coordinate: coord,
     system: .placidus,
@@ -214,7 +222,7 @@ print(houses.angles.midheaven)             // MC 黄经
 独立的 Gauquelin 36 扇区 API：
 
 ```swift
-let sectors = try AstroCalculator.gauquelinSectors(
+let sectors = try AstrologyCalculator.gauquelinSectors(
     for: moment,
     coordinate: coord
 )
@@ -226,7 +234,7 @@ print(sectors.sectors[18].eclipticLongitude)      // sector 19 = DSC
 print(sectors.sectors[27].eclipticLongitude)      // sector 28 = IC
 ```
 
-2.0.0 暂不支持：
+v3 公开 API 暂不支持：
 `Krusinski-Pisa-Goelzer`、`APC`、`Sunshine (Treindl)`、
 `Sunshine (Makransky)`、`Pullen SD`、`Pullen SR`
 
@@ -239,7 +247,7 @@ let moment = try CivilMoment(
 )
 let coord = try GeoCoordinate(latitude: 40.7128, longitude: -74.0060)
 
-let natal = try AstroCalculator.natalPositions(
+let natal = try AstrologyCalculator.natalPositions(
     for: moment,
     coordinate: coord,
     bodies: [.sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn],
@@ -258,7 +266,7 @@ for (body, pos) in natal.bodies {
 如果你还想一次拿到宫位和四轴，可以直接用：
 
 ```swift
-let chart = try AstroCalculator.natalChart(
+let chart = try AstrologyCalculator.natalChart(
     for: moment,
     coordinate: coord,
     system: .placidus
@@ -327,7 +335,9 @@ print(sign.contains(longitude: 135.0))  // true
 
 > **上表核心天体在本地验证集中误差 < 1 角秒。**
 
-1850–2100 共 750+ 历元交叉验证。
+当前入仓 CI 可证明 release 测试，以及
+`ASTROCORE_ENABLE_BASELINE_VERIFICATION=1` 开启的 gated reference baseline。
+更大范围但未入仓的历元扫测应视为本地验证数据，直到对应 fixture 纳入仓库。
 
 <div align="right">
 
@@ -371,7 +381,7 @@ Release 模式，Apple Silicon（M-series）：
 - ✅ **宫位系统** — 16 种系统覆盖宫头有效性、四轴对齐与高纬 fallback
 - ✅ **Gauquelin 扇区** — 独立 36 扇区模型，覆盖顺时针编号与 baseline
 - ✅ **极端边界** — 年份边界(1800/2100)、极地纬度、星座交界
-- ✅ **回归基准** — 在 CI 和本地 release 校验中自动检测数值漂移（< 10⁻¹⁰°）
+- ✅ **回归基准** — 在 CI 和本地 release 校验中 gated 检查宫位、Gauquelin 扇区、相位、升落中天与留点
 
 <div align="right">
 
@@ -385,14 +395,21 @@ Release 模式，Apple Silicon（M-series）：
 
 | 类型 | 说明 |
 |------|------|
-| `AstroCalculator` | 主入口 — 太阳/月亮/行星/上升星座/宫位/本命盘 |
+| `AstroCalculator` | 主入口 — 儒略日、太阳/月亮/行星位置、运动状态与底层角度计算 |
 | `CivilMoment` | 民用时间（年月日时分秒 + IANA 时区，必要时可显式指定重复小时的解析策略） |
 | `RepeatedTimeResolution` | 夏令时回拨重复小时的解析策略：拒绝、第一次出现或最后一次出现 |
 | `GeoCoordinate` | 地理坐标（纬度/经度范围校验） |
-| `CelestialBody` | 天体枚举 — `.sun`, `.moon`, `.mercury`, `.venus`, `.mars`, `.jupiter`, `.saturn` |
-| `ZodiacSign` | 黄道十二宫（名称、emoji、起始经度、`contains()`） |
 | `CelestialPosition` | 轻量天体位置（黄经、黄纬） |
 | `CelestialState` | 运动状态天体（位置 + 黄经速度/逆行） |
+| `CelestialBody` | 天体枚举 — 太阳至冥王星、月交点与 Lilith 变体 |
+| `AstroError` | 类型化核心错误（坐标无效、年份越界、星历数据缺失等） |
+
+### AstroAstrology（占星层）
+
+| 类型 | 说明 |
+|------|------|
+| `AstrologyCalculator` | 占星主入口 — 黄道映射、上升、宫位、Gauquelin 扇区、本命盘与相位 |
+| `ZodiacSign` | 黄道十二宫（名称、emoji、起始经度、`contains()`） |
 | `AscendantResult` | 上升星座结果（黄经、星座、星座内度数、边界标记） |
 | `NatalPositions` | 批量结果（可选 ASC + 天体字典） |
 | `NatalStates` | 运动状态批量结果（可选 ASC + 天体状态字典） |
@@ -404,7 +421,8 @@ Release 模式，Apple Silicon（M-series）：
 | `GauquelinSector` | 单个 Gauquelin 扇区边界（`1...36`，顺时针编号） |
 | `Angles` | ASC / MC / DSC / IC 与可选 Vertex |
 | `PolarFallback` | 极地纬度下宫位系统不可用时的 fallback 策略 |
-| `AstroError` | 类型化错误（坐标无效、年份越界、缺少坐标、高纬宫位错误） |
+| `AspectKind` / `AspectGrid` | 相位定义与匹配到的天体相位网格 |
+| `AstrologyError` | 类型化占星层错误（缺少坐标、高纬宫位错误、包装的核心错误等） |
 
 ### AstroCoreLocations（可选）
 
@@ -424,7 +442,7 @@ Release 模式，Apple Silicon（M-series）：
 | | 项目 | 范围 |
 |-|------|------|
 | 📆 | 年份 | 1800 — 2100（301 年） |
-| 🪐 | 天体 | 太阳、月亮、水星、金星、火星、木星、土星 |
+| 🪐 | 天体 | 太阳、月亮、水星、金星、火星、木星、土星、天王星、海王星、冥王星、月交点、Lilith 变体 |
 | 🏠 | 宫位系统 | 16 种：Equal (ASC/MC)、Whole Sign、Vehlow、Porphyry、Sripati、Placidus、Koch、Alcabitius、Campanus、Regiomontanus、Morinus、Topocentric、Horizontal、Meridian / Axial Rotation、Carter |
 | 📈 | Gauquelin 扇区 | 36 扇区统计模型，使用独立 API |
 | 🖥️ | 平台 | iOS 15+ · macOS 12+ · tvOS 15+ · watchOS 8+ · visionOS 1+ |

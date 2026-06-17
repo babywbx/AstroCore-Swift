@@ -44,10 +44,10 @@ public struct OrbPolicy: Sendable, Hashable, Codable {
         bodyA: CelestialBody,
         bodyB: CelestialBody
     ) -> Double {
-        let base = baseOrbs[kind] ?? kind.defaultOrbDegrees
+        let base = baseOrb(for: kind)
         guard !bodyOrbModifiers.isEmpty, kind.isMajor else { return base }
-        let modifierA = bodyOrbModifiers[bodyA]
-        let modifierB = bodyOrbModifiers[bodyB]
+        let modifierA = Self.validOrb(bodyOrbModifiers[bodyA])
+        let modifierB = Self.validOrb(bodyOrbModifiers[bodyB])
         guard modifierA != nil || modifierB != nil else { return base }
         return max(modifierA ?? base, modifierB ?? base) * kind.majorOrbScale
     }
@@ -62,7 +62,7 @@ public struct OrbPolicy: Sendable, Hashable, Codable {
         if case .body(let a) = participantA, case .body(let b) = participantB {
             return allowedOrb(for: kind, bodyA: a, bodyB: b)
         }
-        let base = baseOrbs[kind] ?? kind.defaultOrbDegrees
+        let base = baseOrb(for: kind)
         let usesWeighting = !bodyOrbModifiers.isEmpty || angleOrbModifier != nil
         guard usesWeighting, kind.isMajor else { return base }
         let modifierA = modifier(for: participantA)
@@ -73,8 +73,18 @@ public struct OrbPolicy: Sendable, Hashable, Codable {
 
     private func modifier(for participant: AspectParticipant) -> Double? {
         switch participant {
-        case .body(let body): bodyOrbModifiers[body]
-        case .angle: angleOrbModifier
+        case .body(let body): Self.validOrb(bodyOrbModifiers[body])
+        case .angle: Self.validOrb(angleOrbModifier)
         }
+    }
+
+    private func baseOrb(for kind: AspectKind) -> Double {
+        guard let configured = baseOrbs[kind] else { return kind.defaultOrbDegrees }
+        return Self.validOrb(configured) ?? 0.0
+    }
+
+    private static func validOrb(_ value: Double?) -> Double? {
+        guard let value else { return nil }
+        return value.isFinite && value >= 0.0 ? value : nil
     }
 }

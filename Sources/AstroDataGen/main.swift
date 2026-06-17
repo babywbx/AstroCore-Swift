@@ -11,7 +11,28 @@ func requiredEnvironmentURL(_ key: String) throws -> URL {
     guard let url = URL(string: value) else {
         throw DataGenError.invalidEnvironmentURL(key, value)
     }
+    guard url.scheme?.lowercased() == "https" else {
+        throw DataGenError.insecureURL(key, url)
+    }
     return url
+}
+
+func requiredSHA256(_ key: String) throws -> String {
+    guard let value = ProcessInfo.processInfo.environment[key]?.trimmingCharacters(
+        in: .whitespacesAndNewlines
+    ), !value.isEmpty else {
+        throw DataGenError.missingEnvironmentValue(key)
+    }
+    let normalized = value.lowercased()
+    guard normalized.count == 64,
+          normalized.unicodeScalars.allSatisfy({ scalar in
+              (48...57).contains(scalar.value)
+                  || (97...102).contains(scalar.value)
+          })
+    else {
+        throw DataGenError.invalidData(detail: "Invalid SHA-256 in \(key)")
+    }
+    return normalized
 }
 
 func findPackageRoot() -> URL {
@@ -56,7 +77,13 @@ func run() async throws {
         let filename = "VSOP87D.\(body)"
         let url = vsopBase.appendingPathComponent(filename)
         let dest = cacheDir.appendingPathComponent(filename)
-        try await Downloader.download(url: url, to: dest, skipIfExists: true)
+        let checksum = try requiredSHA256("ASTRO_DATAGEN_VSOP_SHA256_\(body.uppercased())")
+        try await Downloader.download(
+            url: url,
+            to: dest,
+            skipIfExists: true,
+            expectedSHA256: checksum
+        )
     }
 
     // --- 2. Download & extract city dataset ---
@@ -65,7 +92,13 @@ func run() async throws {
     if !FileManager.default.fileExists(atPath: cityDataTxt.path) {
         let cityDataZip = cacheDir.appendingPathComponent("cities15000.zip")
         let url = try requiredEnvironmentURL("ASTRO_DATAGEN_CITY_DATA_URL")
-        try await Downloader.download(url: url, to: cityDataZip, skipIfExists: false)
+        let checksum = try requiredSHA256("ASTRO_DATAGEN_CITY_DATA_SHA256")
+        try await Downloader.download(
+            url: url,
+            to: cityDataZip,
+            skipIfExists: false,
+            expectedSHA256: checksum
+        )
         try ZipExtractor.extract(
             cityDataZip, to: cacheDir,
             expectedFiles: ["cities15000.txt"]

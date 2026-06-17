@@ -3,6 +3,7 @@ import Foundation
 /// Single public entry point for all astronomical calculations
 public enum AstroCalculator {
     static let speedStepDays = 0.25
+    private static let supportedYearRange = 1800...2100
 
     /// --- Low-level (stable API) ---
     public static func julianDayUT(for moment: CivilMoment) -> Double {
@@ -15,6 +16,7 @@ public enum AstroCalculator {
         of body: CelestialBody,
         julianDayTT jd: Double
     ) -> Double {
+        guard isSupportedJulianDay(jd) else { return .nan }
         let t = (jd - JulianDay.j2000) / 36525.0
         let tau = (jd - JulianDay.j2000) / 365250.0
         let nutationArcsec = Nutation.compute(julianCenturiesTT: t).longitude
@@ -33,15 +35,19 @@ public enum AstroCalculator {
 
     /// Delta T (TT - UT) in seconds for a Julian Day in UT.
     public static func deltaTSeconds(julianDayUT jd: Double) -> Double {
+        guard isSupportedJulianDay(jd) else { return .nan }
         let decimalYear = 2000.0 + (jd - JulianDay.j2000) / 365.25
         return DeltaT.deltaT(decimalYear: decimalYear)
     }
 
     /// UT Julian Day for a TT Julian Day, inverting ΔT (jdUT = jdTT − ΔT(jdUT)/86400).
     public static func julianDayUT(fromJulianDayTT jdTT: Double) -> Double {
+        guard isSupportedJulianDay(jdTT) else { return .nan }
         var jdUT = jdTT
         for _ in 0..<8 {
-            let next = jdTT - deltaTSeconds(julianDayUT: jdUT) / 86400.0
+            let deltaT = deltaTSeconds(julianDayUT: jdUT)
+            guard deltaT.isFinite else { return .nan }
+            let next = jdTT - deltaT / 86400.0
             if abs(next - jdUT) < 1e-9 { return next }
             jdUT = next
         }
@@ -53,7 +59,8 @@ public enum AstroCalculator {
         of body: CelestialBody,
         julianDayUT jd: Double
     ) -> Double {
-        eclipticLongitude(
+        guard isSupportedJulianDay(jd) else { return .nan }
+        return eclipticLongitude(
             of: body,
             julianDayTT: jd + deltaTSeconds(julianDayUT: jd) / 86400.0
         )
@@ -64,6 +71,9 @@ public enum AstroCalculator {
         of body: CelestialBody,
         julianDayTT jd: Double
     ) -> Double {
+        guard isSupportedJulianDay(jd - speedStepDays),
+              isSupportedJulianDay(jd + speedStepDays)
+        else { return .nan }
         let lo = eclipticLongitude(of: body, julianDayTT: jd - speedStepDays)
         let hi = eclipticLongitude(of: body, julianDayTT: jd + speedStepDays)
         return longitudeSpeed(fromLower: lo, upper: hi)
@@ -268,6 +278,7 @@ public enum AstroCalculator {
     /// Equation of time in minutes (apparent solar time − mean solar time) for a Julian Day in UT.
     /// True solar time = mean solar time + equationOfTime + (longitudeDegrees × 4) minutes (east positive).
     public static func equationOfTime(julianDayUT jd: Double) -> Double {
+        guard isSupportedJulianDay(jd) else { return .nan }
         let jdTT = jd + deltaTSeconds(julianDayUT: jd) / 86400.0
         let t = (jdTT - JulianDay.j2000) / 36525.0
         let tau = (jdTT - JulianDay.j2000) / 365250.0
@@ -399,6 +410,7 @@ public enum AstroCalculator {
         julianDayTT jd: Double
     ) -> [CelestialBody: Double] {
         guard !bodies.isEmpty else { return [:] }
+        guard isSupportedJulianDay(jd) else { return [:] }
 
         let t = (jd - JulianDay.j2000) / 36525.0
         let tau = (jd - JulianDay.j2000) / 365250.0
@@ -477,9 +489,16 @@ public enum AstroCalculator {
         fromLower lo: Double,
         upper hi: Double
     ) -> Double {
+        guard lo.isFinite, hi.isFinite else { return .nan }
         var diff = hi - lo
         if diff > 180.0 { diff -= 360.0 }
         if diff < -180.0 { diff += 360.0 }
         return diff / (2.0 * speedStepDays)
+    }
+
+    static func isSupportedJulianDay(_ julianDay: Double) -> Bool {
+        guard julianDay.isFinite else { return false }
+        let civil = JulianDay.calendarDate(julianDay: julianDay)
+        return supportedYearRange.contains(civil.year)
     }
 }

@@ -7,10 +7,15 @@ enum ZipExtractor {
         _ zipFile: URL, to directory: URL, expectedFiles: Set<String>
     ) throws {
         #if os(macOS)
-            // List archive contents first
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+
+            // List raw archive entries first.
             let listProcess = Process()
             listProcess.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-            listProcess.arguments = ["-l", zipFile.path]
+            listProcess.arguments = ["-Z1", zipFile.path]
             let pipe = Pipe()
             listProcess.standardOutput = pipe
             listProcess.standardError = nil
@@ -26,11 +31,24 @@ enum ZipExtractor {
                 encoding: .utf8
             ) ?? ""
 
-            // Reject path traversal and unexpected entries
-            let entries = listOutput.components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespaces) }
+            let entries = Set(
+                listOutput.components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            )
+            guard entries == expectedFiles else {
+                throw DataGenError.invalidData(
+                    detail: "Zip entries \(entries.sorted()) do not match expected \(expectedFiles.sorted())"
+                )
+            }
+
             for entry in entries {
-                if entry.contains("..") || entry.hasPrefix("/") {
+                let components = entry.split(separator: "/")
+                if entry.hasPrefix("/")
+                    || entry.hasSuffix("/")
+                    || components.isEmpty
+                    || components.contains("..")
+                {
                     throw DataGenError.invalidData(
                         detail: "Zip contains suspicious path: \(entry)"
                     )
@@ -40,8 +58,9 @@ enum ZipExtractor {
             // Extract only expected files
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-            process.arguments = ["-o", zipFile.path, "-d", directory.path]
-                + Array(expectedFiles)
+            process.arguments = ["-o", zipFile.path]
+                + expectedFiles.sorted()
+                + ["-d", directory.path]
             process.standardOutput = nil
             process.standardError = nil
             try process.run()
@@ -54,8 +73,20 @@ enum ZipExtractor {
             let maxSize: UInt64 = 500 * 1024 * 1024
             for file in expectedFiles {
                 let path = directory.appendingPathComponent(file)
-                let attrs = try? FileManager.default.attributesOfItem(atPath: path.path)
-                let size = attrs?[.size] as? UInt64 ?? 0
+                let values = try path.resourceValues(forKeys: [
+                    .fileSizeKey,
+                    .isRegularFileKey,
+                    .isSymbolicLinkKey
+                ])
+                guard values.isRegularFile == true,
+                      values.isSymbolicLink != true
+                else {
+                    try? FileManager.default.removeItem(at: path)
+                    throw DataGenError.invalidData(
+                        detail: "Extracted file \(file) is not a regular file"
+                    )
+                }
+                let size = UInt64(values.fileSize ?? 0)
                 if size > maxSize {
                     try? FileManager.default.removeItem(at: path)
                     throw DataGenError.invalidData(

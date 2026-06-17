@@ -2,6 +2,12 @@ import Foundation
 
 /// City search index — loads the compact cities.json lazily
 public final class CityIndex: @unchecked Sendable {
+    private enum LoadState {
+        case unloaded
+        case loaded
+        case failed
+    }
+
     private struct SearchEntry {
         let city: CityRecord
         let normalizedName: String
@@ -12,7 +18,7 @@ public final class CityIndex: @unchecked Sendable {
 
     private var searchEntries: [SearchEntry] = []
     private var citiesByID: [String: CityRecord] = [:]
-    private var isLoaded = false
+    private var loadState = LoadState.unloaded
     private let lock = NSLock()
 
     private init() {}
@@ -20,30 +26,33 @@ public final class CityIndex: @unchecked Sendable {
     private func ensureLoaded() {
         lock.lock()
         defer { lock.unlock() }
-        guard !isLoaded else { return }
-        loadCities()
-        // Only mark loaded if data was actually populated
-        isLoaded = !searchEntries.isEmpty
+        guard case .unloaded = loadState else { return }
+
+        do {
+            try loadCities()
+            loadState = .loaded
+        } catch {
+            searchEntries = []
+            citiesByID = [:]
+            loadState = .failed
+            print("[AstroCoreLocations] Failed to load cities.json: \(error)")
+        }
     }
 
-    private func loadCities() {
+    private func loadCities() throws {
         guard let url = Bundle.module.url(
             forResource: "cities", withExtension: "json"
         ) else {
-            print("[AstroCoreLocations] cities.json not found in bundle")
-            return
+            throw CocoaError(.fileNoSuchFile)
         }
-        guard let data = try? Data(contentsOf: url),
-              let decoded = try? JSONDecoder().decode([CityRecord].self, from: data)
-        else {
-            print("[AstroCoreLocations] Failed to decode cities.json")
-            return
-        }
+        let data = try Data(contentsOf: url)
+        let decoded = try JSONDecoder().decode([CityRecord].self, from: data)
+
         searchEntries = decoded.map { city in
             SearchEntry(
                 city: city,
-                normalizedName: city.name.lowercased(),
-                normalizedCountryCode: city.countryCode.lowercased()
+                normalizedName: Self.normalizeSearchText(city.name),
+                normalizedCountryCode: Self.normalizeSearchText(city.countryCode)
             )
         }
         citiesByID = Dictionary(
@@ -54,8 +63,7 @@ public final class CityIndex: @unchecked Sendable {
 
     public func search(_ query: String, limit: Int = 50) -> [CityRecord] {
         ensureLoaded()
-        let normalizedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
+        let normalizedQuery = Self.normalizeSearchText(query)
         guard !normalizedQuery.isEmpty, limit > 0 else { return [] }
 
         let results = searchEntries.lazy.filter { entry in
@@ -68,5 +76,15 @@ public final class CityIndex: @unchecked Sendable {
     public func city(forID id: String) -> CityRecord? {
         ensureLoaded()
         return citiesByID[id]
+    }
+
+    private static func normalizeSearchText(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(
+                options: [.caseInsensitive, .diacriticInsensitive],
+                locale: Locale(identifier: "en_US_POSIX")
+            )
+            .lowercased()
     }
 }

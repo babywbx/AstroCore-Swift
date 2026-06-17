@@ -155,6 +155,31 @@ struct AspectTests {
         }
     }
 
+    @Test func aspectPrimitivesRejectNonFiniteAndInvalidAspectAngles() {
+        #expect(AstroCalculator.aspectSeparation(
+            longitudeA: .nan,
+            longitudeB: 10,
+            aspectAngleDegrees: 0
+        ).isNaN)
+        #expect(AstroCalculator.aspectSeparation(
+            longitudeA: 0,
+            longitudeB: 10,
+            aspectAngleDegrees: -1
+        ).isNaN)
+        #expect(AstroCalculator.aspectSeparation(
+            longitudeA: 0,
+            longitudeB: 10,
+            aspectAngleDegrees: 181
+        ).isNaN)
+        #expect(AstroCalculator.aspectClosingRate(
+            speedA: .infinity,
+            speedB: 1,
+            longitudeA: 0,
+            longitudeB: 10,
+            aspectAngleDegrees: 0
+        ).isNaN)
+    }
+
     @Test func closingRateSignContractProgradeApproachingAndSeparating() {
         // Prograde: B behind A and faster -> applying toward conjunction.
         let applying = AstroCalculator.aspectClosingRate(
@@ -225,6 +250,30 @@ struct AspectTests {
             sun, mars, aspectKinds: AspectKind.ptolemaic, orbPolicy: .default
         )
         #expect(aspect == nil)
+    }
+
+    @Test func aspectEngineRejectsInvalidStatesAndOrbValues() {
+        let sun = CelestialState(body: .sun, longitude: 0, latitude: 0, speed: 1)
+        let invalidLongitude = CelestialState(body: .moon, longitude: .nan, latitude: 0, speed: 13)
+        #expect(
+            AspectEngine.resolve(
+                sun,
+                invalidLongitude,
+                aspectKinds: [.conjunction],
+                orbPolicy: .default
+            ) == nil
+        )
+
+        let wideInvalid = OrbPolicy(baseOrbs: [.conjunction: .infinity])
+        let mars = CelestialState(body: .mars, longitude: 90, latitude: 0, speed: 0)
+        #expect(
+            AspectEngine.resolve(
+                sun,
+                mars,
+                aspectKinds: [.conjunction],
+                orbPolicy: wideInvalid
+            ) == nil
+        )
     }
 
     @Test func aspectEnginePicksClosestKindWhenOrbsOverlap() {

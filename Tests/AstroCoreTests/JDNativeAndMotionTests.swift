@@ -110,4 +110,41 @@ struct JDNativeAndMotionTests {
         let mcWrapped = AstroCalculator.midheavenLongitude(for: moment, coordinate: coord)
         #expect(abs(mcDirect - mcWrapped) < 1e-12)
     }
+
+    @Test func jdNativeAPIsRejectNonFiniteAndOutOfRangeInputs() throws {
+        let coordinate = try GeoCoordinate(latitude: 40.0, longitude: -74.0)
+        let unsupportedUT = JulianDay.julianDay(year: 1799, month: 12, dayFraction: 31.0)
+        let unsupportedTT = JulianDay.julianDay(year: 2101, month: 1, dayFraction: 1.0)
+
+        for jd in [Double.nan, Double.infinity, unsupportedTT] {
+            #expect(AstroCalculator.eclipticLongitude(of: .sun, julianDayTT: jd).isNaN)
+            #expect(AstroCalculator.longitudeSpeed(of: .sun, julianDayTT: jd).isNaN)
+            let equatorial = AstroCalculator.equatorial(of: .sun, julianDayTT: jd)
+            #expect(equatorial.rightAscension.isNaN)
+            #expect(equatorial.declination.isNaN)
+            #expect(AstroCalculator.stationJulianDayTT(of: .mercury, nearJulianDayTT: jd) == nil)
+            #expect(AstroCalculator.exactAspectJulianDayTT(
+                of: .sun, and: .moon, aspectAngleDegrees: 0.0, nearJulianDayTT: jd
+            ) == nil)
+        }
+
+        for jd in [Double.nan, Double.infinity, unsupportedUT] {
+            #expect(AstroCalculator.deltaTSeconds(julianDayUT: jd).isNaN)
+            #expect(AstroCalculator.eclipticLongitude(of: .sun, julianDayUT: jd).isNaN)
+            #expect(AstroCalculator.equationOfTime(julianDayUT: jd).isNaN)
+            #expect(AstroCalculator.topocentricAltitudeDegrees(
+                of: .sun, atJulianDayUT: jd, coordinate: coordinate
+            ).isNaN)
+            #expect(AstroCalculator.hourAngleDegrees(
+                of: .sun, atJulianDayUT: jd, observerLongitude: coordinate.longitude
+            ).isNaN)
+            #expect(AstroCalculator.riseJulianDayUT(
+                of: .sun, coordinate: coordinate, nearJulianDayUT: jd
+            ) == nil)
+            #expect(AstroCalculator.riseJulianDaysUT(
+                of: .sun, coordinate: coordinate,
+                fromJulianDayUT: jd, throughJulianDayUT: jd + 1.0
+            ).isEmpty)
+        }
+    }
 }

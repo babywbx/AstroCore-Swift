@@ -12,19 +12,22 @@ enum CityDataParser {
             let fields = line.components(separatedBy: "\t")
             guard fields.count >= 18 else { continue }
 
-            let id = fields[0]
-            let name = fields[1]
+            let id = fields[0].trimmingCharacters(in: .whitespacesAndNewlines)
+            let name = fields[1].trimmingCharacters(in: .whitespacesAndNewlines)
             guard let latitude = Double(fields[4]),
                   let longitude = Double(fields[5])
             else { continue }
-            let countryCode = fields[8]
-            let population = Int(fields[14]) ?? 0
-            let timezone = fields[17]
+            let countryCode = fields[8].trimmingCharacters(in: .whitespacesAndNewlines)
+            let population = max(Int(fields[14]) ?? 0, 0)
+            let timezone = fields[17].trimmingCharacters(in: .whitespacesAndNewlines)
 
             // Validate coordinate ranges
             guard (-90.0...90.0).contains(latitude),
                   (-180.0...180.0).contains(longitude),
-                  !timezone.isEmpty
+                  !id.isEmpty,
+                  !name.isEmpty,
+                  isValidCountryCode(countryCode),
+                  TimeZone(identifier: timezone) != nil
             else { continue }
 
             let cityRow: CityRow = [
@@ -48,5 +51,12 @@ enum CityDataParser {
         )
         try data.write(to: output, options: .atomic)
         print("  Wrote \(cities.count) cities to cities.json")
+    }
+
+    private static func isValidCountryCode(_ value: String) -> Bool {
+        let scalars = value.unicodeScalars
+        return scalars.count == 2 && scalars.allSatisfy { scalar in
+            scalar.value >= 65 && scalar.value <= 90
+        }
     }
 }

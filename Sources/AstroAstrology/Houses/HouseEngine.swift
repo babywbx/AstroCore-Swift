@@ -26,7 +26,7 @@ enum HouseEngine {
         // Using the moment's true obliquity avoids prematurely falling back in
         // the ~66.0°...66.56° band where the ecliptic is still fully rising/setting.
         let polarCircleLatitude = 90.0 - abs(context.obliquityDegrees)
-        if system.hasPolarLimit && abs(coordinate.latitude) > polarCircleLatitude {
+        if system.hasPolarLimit && abs(coordinate.latitude) >= polarCircleLatitude {
             let resolved = try resolveFallback(
                 requested: system,
                 fallback: polarFallback,

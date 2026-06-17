@@ -93,4 +93,18 @@ struct ChartAspectTests {
         )
         #expect(bodyBody == widened.baseOrbs[.conjunction])
     }
+
+    @Test func invalidAngleOrbModifierDoesNotCreateSpuriousAspect() {
+        let invalid = OrbPolicy(
+            baseOrbs: [.conjunction: 0.0],
+            angleOrbModifier: .infinity
+        )
+        let aspect = AspectEngine.resolveChartAspect(
+            participantA: .body(.sun), longitudeA: 0.0, speedA: 1.0,
+            participantB: .angle(.ascendant), longitudeB: 90.0, speedB: 0.0,
+            aspectKinds: [.conjunction],
+            orbPolicy: invalid
+        )
+        #expect(aspect == nil)
+    }
 }

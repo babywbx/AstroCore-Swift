@@ -63,6 +63,9 @@ extension AstroCalculator {
 
     /// Apparent geocentric equatorial RA/Dec (of date) for a Julian Day in TT.
     public static func equatorial(of body: CelestialBody, julianDayTT jd: Double) -> EquatorialCoordinate {
+        guard isSupportedJulianDay(jd) else {
+            return EquatorialCoordinate(rightAscension: .nan, declination: .nan)
+        }
         let place = apparentPlace(of: body, julianDayTT: jd)
         return EquatorialCoordinate(rightAscension: place.rightAscension, declination: place.declination)
     }
@@ -97,13 +100,15 @@ extension AstroCalculator {
     public static func topocentricAltitudeDegrees(
         of body: CelestialBody, atJulianDayUT jd: Double, coordinate: GeoCoordinate
     ) -> Double {
-        altitude(place(of: body, atJulianDayUT: jd), jdUT: jd, coordinate: coordinate)
+        guard isSupportedJulianDay(jd) else { return .nan }
+        return altitude(place(of: body, atJulianDayUT: jd), jdUT: jd, coordinate: coordinate)
     }
 
     /// Hour angle H = LAST − RA folded into (−180, 180]; zero at upper transit, ±180 at lower.
     public static func hourAngleDegrees(
         of body: CelestialBody, atJulianDayUT jd: Double, observerLongitude: Double
     ) -> Double {
+        guard isSupportedJulianDay(jd) else { return .nan }
         let place = place(of: body, atJulianDayUT: jd)
         let last = localApparentSiderealTime(place, jdUT: jd, longitude: observerLongitude)
         return wrappedDelta(last - place.rightAscension)
@@ -136,6 +141,7 @@ extension AstroCalculator {
         of body: CelestialBody, atJulianDayUT jd: Double, coordinate: GeoCoordinate,
         applyRefraction: Bool = true
     ) -> Double {
+        guard isSupportedJulianDay(jd) else { return .nan }
         let place = place(of: body, atJulianDayUT: jd)
         return altitude(place, jdUT: jd, coordinate: coordinate)
             - standardAltitudeDegrees(of: body, distanceAU: place.distanceAU, applyRefraction: applyRefraction)
@@ -167,6 +173,7 @@ extension AstroCalculator {
         of body: CelestialBody, observerLongitude: Double,
         kind: MeridianTransitKind = .upper, nearJulianDayUT jd: Double
     ) -> Double? {
+        guard isSupportedJulianDay(jd) else { return nil }
         let target = kind == .upper ? 0.0 : 180.0
         return RootSolver.nearestRoot(
             near: jd, window: diurnalSearchWindowDays, tuning: transitTuning(),
@@ -180,6 +187,7 @@ extension AstroCalculator {
         of body: CelestialBody, observerLongitude: Double, kind: MeridianTransitKind = .upper,
         fromJulianDayUT start: Double, throughJulianDayUT end: Double
     ) -> [Double] {
+        guard isSupportedJulianDay(start), isSupportedJulianDay(end) else { return [] }
         let target = kind == .upper ? 0.0 : 180.0
         return RootSolver.roots(
             from: start, through: end, tuning: transitTuning(),
@@ -204,6 +212,7 @@ extension AstroCalculator {
         of body: CelestialBody, coordinate: GeoCoordinate,
         from start: Double, through end: Double, applyRefraction: Bool
     ) -> [(julianDayUT: Double, rising: Bool)] {
+        guard isSupportedJulianDay(start), isSupportedJulianDay(end) else { return [] }
         let value: (Double) -> Double = {
             altitudeAboveStandardDegrees(of: body, atJulianDayUT: $0, coordinate: coordinate, applyRefraction: applyRefraction)
         }
@@ -308,6 +317,7 @@ extension AstroCalculator {
         targetAltitudeDegrees target: Double,
         fromJulianDayUT start: Double, throughJulianDayUT end: Double
     ) -> [(julianDayUT: Double, rising: Bool)] {
+        guard isSupportedJulianDay(start), isSupportedJulianDay(end), target.isFinite else { return [] }
         let value: (Double) -> Double = {
             topocentricAltitudeDegrees(of: body, atJulianDayUT: $0, coordinate: coordinate) - target
         }

@@ -2,6 +2,19 @@
 
 set -euo pipefail
 
+missing_tools=()
+for tool in swiftformat swiftlint; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    missing_tools+=("$tool")
+  fi
+done
+
+if ((${#missing_tools[@]} > 0)); then
+  printf 'Missing required release verification tool(s): %s\n' "${missing_tools[*]}" >&2
+  echo "Install them with: brew install swiftformat swiftlint" >&2
+  exit 1
+fi
+
 swift test -c release
 ASTROCORE_ENABLE_BASELINE_VERIFICATION=1 swift test -c release --filter Baseline
 
@@ -14,14 +27,5 @@ xcodebuild \
   -derivedDataPath "$derived_data_path" \
   build
 
-if command -v swiftformat >/dev/null 2>&1; then
-  swiftformat . --config .swiftformat --lint
-else
-  echo "swiftformat not found; skipping format lint" >&2
-fi
-
-if command -v swiftlint >/dev/null 2>&1; then
-  swiftlint lint . --config .swiftlint.yml --strict --force-exclude
-else
-  echo "swiftlint not found; skipping SwiftLint" >&2
-fi
+swiftformat . --config .swiftformat --lint
+swiftlint lint . --config .swiftlint.yml --strict --force-exclude

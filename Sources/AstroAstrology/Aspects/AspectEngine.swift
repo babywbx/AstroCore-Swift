@@ -94,6 +94,13 @@ enum AspectEngine {
         longitudeB: Double, speedB: Double,
         orderedAspectKinds: [AspectKind], allowedOrb: (AspectKind) -> Double
     ) -> Resolution? {
+        guard longitudeA.isFinite,
+              longitudeB.isFinite,
+              speedA.isFinite,
+              speedB.isFinite,
+              !orderedAspectKinds.isEmpty
+        else { return nil }
+
         var bestKind: AspectKind?
         var bestDeviation = 0.0
         var bestAllowedOrb = 0.0
@@ -102,6 +109,10 @@ enum AspectEngine {
                 longitudeA: longitudeA, longitudeB: longitudeB, aspectAngleDegrees: kind.angleDegrees
             )
             let allowed = allowedOrb(kind)
+            guard deviation.isFinite,
+                  allowed.isFinite,
+                  allowed >= 0.0
+            else { continue }
             let absDeviation = abs(deviation)
             guard absDeviation <= allowed else { continue }
             if bestKind != nil, abs(bestDeviation) <= absDeviation { continue }

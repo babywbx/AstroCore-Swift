@@ -562,6 +562,17 @@ struct HouseSystemTests {
             system: .topocentric
         )
         #expect(topocentric.resolvedSystem == .topocentric)
+
+        let polarCircleLatitude = 90.0 - abs(moment.trueObliquity)
+        let boundaryCoordinate = try GeoCoordinate(latitude: polarCircleLatitude, longitude: 0.0)
+        let boundaryPlacidus = try AstrologyCalculator.houses(
+            for: moment,
+            coordinate: boundaryCoordinate,
+            system: .placidus,
+            polarFallback: .equalASC
+        )
+        #expect(boundaryPlacidus.resolvedSystem == .equalASC)
+        #expect(!boundaryPlacidus.usedRequestedSystem)
     }
 
     @Test func housesRejectAscendantExtremeLatitude() throws {

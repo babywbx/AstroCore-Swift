@@ -7,7 +7,12 @@ extension AstroCalculator {
         longitudeB: Double,
         aspectAngleDegrees: Double
     ) -> Double {
+        guard longitudeA.isFinite,
+              longitudeB.isFinite,
+              isValidAspectAngle(aspectAngleDegrees)
+        else { return .nan }
         let delta = wrappedDelta(longitudeB - longitudeA)
+        guard delta.isFinite else { return .nan }
         return abs(delta) - aspectAngleDegrees
     }
 
@@ -22,7 +27,14 @@ extension AstroCalculator {
         longitudeB: Double,
         aspectAngleDegrees: Double
     ) -> Double {
+        guard speedA.isFinite,
+              speedB.isFinite,
+              longitudeA.isFinite,
+              longitudeB.isFinite,
+              isValidAspectAngle(aspectAngleDegrees)
+        else { return .nan }
         let delta = wrappedDelta(longitudeB - longitudeA)
+        guard delta.isFinite else { return .nan }
         let separation = abs(delta)
         let relSpeed = speedB - speedA
         return -signum(separation - aspectAngleDegrees) * signum(delta) * relSpeed
@@ -40,6 +52,11 @@ extension AstroCalculator {
         value > 0.0 ? 1.0 : (value < 0.0 ? -1.0 : 0.0)
     }
 
+    @inline(__always)
+    static func isValidAspectAngle(_ angle: Double) -> Bool {
+        angle.isFinite && (0.0...180.0).contains(angle)
+    }
+
     /// Julian Day (TT) of the exact aspect nearest the seed, found by TT-domain root-solving
     /// of g(t) = wrap180((λ_B − λ_A) − target) = 0; nil when none lies in the window.
     public static func exactAspectJulianDayTT(
@@ -49,6 +66,7 @@ extension AstroCalculator {
         nearJulianDayTT jd: Double,
         searchWindowDays window: Double = 60.0
     ) -> Double? {
+        guard isSupportedJulianDay(jd), isValidAspectAngle(phi), window.isFinite, window >= 0 else { return nil }
         let targets: [Double] = (phi < 1e-9 || phi > 180.0 - 1e-9) ? [phi] : [phi, -phi]
         var nearest: Double?
         var nearestDistance = Double.infinity
@@ -74,14 +92,20 @@ extension AstroCalculator {
         nearJulianDayUT jd: Double,
         searchWindowDays window: Double = 60.0
     ) -> Double? {
-        let seedTT = jd + deltaTSeconds(julianDayUT: jd) / 86400.0
+        guard isSupportedJulianDay(jd), isValidAspectAngle(phi), window.isFinite, window >= 0 else { return nil }
+        let deltaT = deltaTSeconds(julianDayUT: jd)
+        guard deltaT.isFinite else { return nil }
+        let seedTT = jd + deltaT / 86400.0
         guard let starTT = exactAspectJulianDayTT(
             of: bodyA, and: bodyB, aspectAngleDegrees: phi,
             nearJulianDayTT: seedTT, searchWindowDays: window
         ) else { return nil }
         var jdUT = starTT
         for _ in 0..<8 {
-            let next = starTT - deltaTSeconds(julianDayUT: jdUT) / 86400.0
+            let deltaT = deltaTSeconds(julianDayUT: jdUT)
+            guard deltaT.isFinite else { return nil }
+            let next = starTT - deltaT / 86400.0
+            guard next.isFinite else { return nil }
             if abs(next - jdUT) < 1e-9 {
                 jdUT = next
                 break

@@ -4,6 +4,11 @@ import Testing
 
 @Suite("CityRecord Tests")
 struct CityRecordTests {
+    private func decodeCity(_ json: String) throws -> CityRecord {
+        let data = "[\(json)]".data(using: .utf8)!
+        return try JSONDecoder().decode([CityRecord].self, from: data)[0]
+    }
+
     @Test func decodesCompactArrayFormat() throws {
         let data = #"[["1850147","Tokyo","JP",3568950,13969171,"Asia/Tokyo"],["2643743","London","GB",5150853,-12574,"Europe/London"],["5128581","New York City","US",4071427,-7400597,"America/New_York"]]"#
             .data(using: .utf8)!
@@ -54,5 +59,26 @@ struct CityRecordTests {
 
         #expect(abs(coordinate.latitude - 40.71427) < 0.00001)
         #expect(abs(coordinate.longitude - -74.00597) < 0.00001)
+    }
+
+    @Test func decodingRejectsMalformedCompactRows() {
+        let malformedRows = [
+            #"["1850147","Tokyo","JP",3568950,13969171]"#,
+            #"["1850147","Tokyo","JP",3568950,13969171,"Asia/Tokyo","extra"]"#,
+            #"["","Tokyo","JP",3568950,13969171,"Asia/Tokyo"]"#,
+            #"["1850147","","JP",3568950,13969171,"Asia/Tokyo"]"#,
+            #"["1850147","Tokyo","JPN",3568950,13969171,"Asia/Tokyo"]"#,
+            #"["1850147","Tokyo","J1",3568950,13969171,"Asia/Tokyo"]"#,
+            #"["1850147","Tokyo","JP",9000001,13969171,"Asia/Tokyo"]"#,
+            #"["1850147","Tokyo","JP",3568950,18000001,"Asia/Tokyo"]"#,
+            #"["1850147","Tokyo","JP",3568950,13969171,""]"#,
+            #"["1850147","Tokyo","JP",3568950,13969171,"Invalid/Zone"]"#
+        ]
+
+        for row in malformedRows {
+            #expect(throws: DecodingError.self) {
+                _ = try decodeCity(row)
+            }
+        }
     }
 }

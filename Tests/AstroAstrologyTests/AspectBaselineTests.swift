@@ -5,6 +5,21 @@ import Testing
 
 @Suite("Aspect Baselines")
 struct AspectBaselineTests {
+    private struct AspectIdentity: Hashable, CustomStringConvertible {
+        let bodyA: CelestialBody
+        let bodyB: CelestialBody
+        let kind: AspectKind
+
+        var description: String {
+            "\(bodyA)-\(bodyB) \(kind.displayName)"
+        }
+    }
+
+    private struct ReferenceAspect {
+        let identity: AspectIdentity
+        let deviation: Double
+    }
+
     private static let mainBodies: [CelestialBody] =
         [.sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn, .uranus, .neptune, .pluto]
 
@@ -47,16 +62,77 @@ struct AspectBaselineTests {
             julianDaysUT: [jdUT], bodies: Self.mainBodies
         )
         let longitudes = try #require(reference.first)
+        let expected = try Self.expectedAspects(from: longitudes, bodies: Self.mainBodies)
+        let expectedKeys = Set(expected.keys)
+        let actualKeys = Set(grid.aspects.map {
+            AspectIdentity(bodyA: $0.bodyA, bodyB: $0.bodyB, kind: $0.kind)
+        })
+
+        #expect(
+            actualKeys.count == grid.aspects.count,
+            "aspect grid contains duplicate aspect identities"
+        )
+        #expect(
+            grid.aspects.count == expected.count,
+            "detected \(grid.aspects.count) aspects, expected \(expected.count)"
+        )
+        #expect(
+            actualKeys == expectedKeys,
+            """
+            aspect set mismatch; missing: \(Self.describe(expectedKeys.subtracting(actualKeys))); \
+            unexpected: \(Self.describe(actualKeys.subtracting(expectedKeys)))
+            """
+        )
+
         for aspect in grid.aspects {
-            let a = try #require(longitudes[aspect.bodyA])
-            let b = try #require(longitudes[aspect.bodyB])
-            let referenceDeviation = AstroCalculator.aspectSeparation(
-                longitudeA: a, longitudeB: b, aspectAngleDegrees: aspect.kind.angleDegrees
+            let identity = AspectIdentity(bodyA: aspect.bodyA, bodyB: aspect.bodyB, kind: aspect.kind)
+            let referenceAspect = try #require(
+                expected[identity],
+                "unexpected detected aspect \(identity)"
             )
             #expect(
-                abs(aspect.deviation - referenceDeviation) < 1e-2,
-                "\(aspect.bodyA)-\(aspect.bodyB) \(aspect.kind.displayName): mine \(aspect.deviation) vs ref \(referenceDeviation)"
+                abs(aspect.deviation - referenceAspect.deviation) < 1e-2,
+                "\(identity): mine \(aspect.deviation) vs ref \(referenceAspect.deviation)"
             )
         }
+    }
+
+    private static func expectedAspects(
+        from longitudes: [CelestialBody: Double],
+        bodies: [CelestialBody]
+    ) throws -> [AspectIdentity: ReferenceAspect] {
+        var expected: [AspectIdentity: ReferenceAspect] = [:]
+        for indexA in 0..<bodies.count {
+            for indexB in (indexA + 1)..<bodies.count {
+                let bodyA = bodies[indexA]
+                let bodyB = bodies[indexB]
+                let longitudeA = try #require(longitudes[bodyA])
+                let longitudeB = try #require(longitudes[bodyB])
+                var best: ReferenceAspect?
+                for kind in AspectKind.allCases {
+                    let deviation = AstroCalculator.aspectSeparation(
+                        longitudeA: longitudeA,
+                        longitudeB: longitudeB,
+                        aspectAngleDegrees: kind.angleDegrees
+                    )
+                    let allowedOrb = OrbPolicy.default.allowedOrb(for: kind, bodyA: bodyA, bodyB: bodyB)
+                    guard abs(deviation) <= allowedOrb else { continue }
+                    if let current = best, abs(current.deviation) <= abs(deviation) { continue }
+                    let identity = AspectIdentity(bodyA: bodyA, bodyB: bodyB, kind: kind)
+                    best = ReferenceAspect(identity: identity, deviation: deviation)
+                }
+                if let best {
+                    expected[best.identity] = best
+                }
+            }
+        }
+        return expected
+    }
+
+    private static func describe(_ identities: Set<AspectIdentity>) -> String {
+        identities
+            .map(\.description)
+            .sorted()
+            .joined(separator: ", ")
     }
 }

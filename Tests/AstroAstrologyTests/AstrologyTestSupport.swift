@@ -27,6 +27,10 @@ struct ReferenceHouseSnapshot: Codable, Sendable {
 }
 
 enum AstrologyTestSupport {
+    static let referencePythonVersion = "3.13"
+    static let referenceEphemerisPackage = "pyswisseph==2.10.3.2"
+    private static let referenceEphemerisModule = "swisseph"
+
     static func circularDifference(_ lhs: Double, _ rhs: Double) -> Double {
         let diff = abs(AngleMath.normalized(degrees: lhs - rhs))
         return min(diff, 360.0 - diff)
@@ -242,16 +246,6 @@ enum AstrologyTestSupport {
             )
         }
         let requestData = try JSONEncoder().encode(requests)
-        let packageName = String(
-            String.UnicodeScalarView(
-                [112, 121, 115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
-            )
-        )
-        let moduleName = String(
-            String.UnicodeScalarView(
-                [115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
-            )
-        )
         let script = """
         import json
         import importlib
@@ -295,9 +289,9 @@ enum AstrologyTestSupport {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [
             "uv", "run",
-            "--python", "3.13",
-            "--with", packageName,
-            "python", "-c", script, moduleName
+            "--python", referencePythonVersion,
+            "--with", referenceEphemerisPackage,
+            "python", "-c", script, referenceEphemerisModule
         ]
 
         let stdinPipe = Pipe()
@@ -341,16 +335,6 @@ enum AstrologyTestSupport {
         let requestData = try JSONEncoder().encode(
             Request(julianDaysUT: julianDaysUT, bodyIndices: indices)
         )
-        let packageName = String(
-            String.UnicodeScalarView(
-                [112, 121, 115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
-            )
-        )
-        let moduleName = String(
-            String.UnicodeScalarView(
-                [115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
-            )
-        )
         let script = """
         import json
         import importlib
@@ -372,9 +356,9 @@ enum AstrologyTestSupport {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [
             "uv", "run",
-            "--python", "3.13",
-            "--with", packageName,
-            "python", "-c", script, moduleName
+            "--python", referencePythonVersion,
+            "--with", referenceEphemerisPackage,
+            "python", "-c", script, referenceEphemerisModule
         ]
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
@@ -432,16 +416,6 @@ enum AstrologyTestSupport {
         let requestData = try JSONEncoder().encode(Request(
             jdStartUT: jdStartUT, body: bodyIndex, longitude: longitude, latitude: latitude, event: event
         ))
-        let packageName = String(
-            String.UnicodeScalarView(
-                [112, 121, 115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
-            )
-        )
-        let moduleName = String(
-            String.UnicodeScalarView(
-                [115, 119, 105, 115, 115, 101, 112, 104].compactMap(UnicodeScalar.init)
-            )
-        )
         let script = """
         import json
         import importlib
@@ -460,9 +434,9 @@ enum AstrologyTestSupport {
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [
             "uv", "run",
-            "--python", "3.13",
-            "--with", packageName,
-            "python", "-c", script, moduleName
+            "--python", referencePythonVersion,
+            "--with", referenceEphemerisPackage,
+            "python", "-c", script, referenceEphemerisModule
         ]
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
