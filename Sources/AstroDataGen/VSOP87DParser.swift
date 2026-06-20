@@ -2,7 +2,7 @@ import Foundation
 
 enum VSOP87DParser {
     /// Parse a raw VSOP87D file and generate a Swift source file
-    /// containing static arrays of (A, B, C) coefficients.
+    /// containing column-major [A…, B…, C…] coefficient arrays per series.
     static func parse(input: URL, output: URL, planetName: String) throws {
         let content = try String(contentsOf: input, encoding: .ascii)
         let lines = content.components(separatedBy: .newlines)
@@ -89,10 +89,16 @@ enum VSOP87DParser {
             guard let terms = series[key], !terms.isEmpty else {
                 throw DataGenError.parseFailed(detail: "Empty VSOP series \(key)")
             }
-            swift += "        static let \(key): [(Double, Double, Double)] = [\n"
+            // Column-major [A…, B…, C…] for vectorized (Accelerate) evaluation.
+            swift += "        static let \(key): [Double] = [\n"
             for t in terms {
-                // Serialize from parsed Double values (not raw strings)
-                swift += "            (\(t.a), \(t.b), \(t.c)),\n"
+                swift += "            \(t.a),\n"
+            }
+            for t in terms {
+                swift += "            \(t.b),\n"
+            }
+            for t in terms {
+                swift += "            \(t.c),\n"
             }
             swift += "        ]\n\n"
         }
