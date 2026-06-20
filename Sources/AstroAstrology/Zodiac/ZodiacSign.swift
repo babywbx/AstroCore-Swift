@@ -55,4 +55,9 @@ public enum ZodiacSign: Int, CaseIterable, Codable, Sendable {
         // Wraps around 360 (Pisces: 330...<360 or 0)
         return normalized >= start || normalized < (end - 360.0)
     }
+
+    /// The sign containing an ecliptic longitude. The longitude is normalized to [0, 360) first.
+    public init(longitude: Double) {
+        self = ZodiacMapper.sign(forLongitude: longitude)
+    }
 }
