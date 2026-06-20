@@ -2,5 +2,5 @@
 // Pure Swift astronomical computation
 
 public enum AstroCore {
-    public static let version = "2.0.0"
+    public static let version = "3.0.0"
 }

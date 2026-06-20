@@ -15,6 +15,18 @@ if ((${#missing_tools[@]} > 0)); then
   exit 1
 fi
 
+# Version gate: every module version constant must be identical and carry no pre-release suffix.
+module_versions="$(grep -hoE 'static let version = "[^"]+"' Sources/*/*.swift | sed -E 's/.*"([^"]+)".*/\1/' | sort -u)"
+if [[ "$(printf '%s\n' "$module_versions" | grep -c .)" -ne 1 ]]; then
+  echo "Module version constants are not identical:" >&2
+  grep -rnE 'static let version = ' Sources >&2
+  exit 1
+fi
+if [[ "$module_versions" == *-* ]]; then
+  echo "Module version carries a pre-release suffix: $module_versions" >&2
+  exit 1
+fi
+
 swift test -c release
 ASTROCORE_ENABLE_BASELINE_VERIFICATION=1 swift test -c release --filter Baseline
 
