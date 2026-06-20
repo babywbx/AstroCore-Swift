@@ -72,7 +72,7 @@
 | 📊 | **批量本命盘** | 一次计算天体、ASC、宫位与四轴 |
 | 🌐 | **城市数据库** | 33,000+ 全球城市坐标与时区（可选模块） |
 | 🧵 | **线程安全** | 全面遵循 `Sendable` |
-| 🚫 | **零依赖** | 纯 Swift，无第三方库 |
+| 🚫 | **零依赖** | 无第三方包 —— 纯 Swift，仅依赖 Apple 的 Foundation + Accelerate |
 | ✅ | **分级精度** | 主要真实天体经本地验证；定义型计算点单独说明 |
 
 <div align="right">
@@ -357,22 +357,34 @@ print(sign.contains(longitude: 135.0))  // true
 
 ## ⚡ 性能
 
-Release 模式，Apple Silicon（M-series）：
+Release 模式，Apple Silicon（M-series）。VSOP 星历计算使用 Apple Accelerate 向量化。
 
 | 计算项 | 耗时 |
 |--------|------|
 | 上升星座 | **0.03 µs** |
-| 宫位宫头（单系统） | **0.3–5.8 µs** |
-| 太阳位置 | **9.3 µs** |
-| 月亮位置 | **1.5 µs** |
-| 单颗行星（水星–冥王星） | **34–166 µs** |
+| 宫位宫头（单系统） | **0.3–6 µs** |
+| 太阳位置 | **4.6 µs** |
+| 月亮位置 | **1.6 µs** |
+| 单颗行星（水星–冥王星） | **17–55 µs** |
 | 相位网格（10 天体，45 组） | **15 µs** |
 | 跨盘合盘（7×7） | **9 µs** |
 | 相位格局识别 | **27 µs** |
-| 完整基础位置（7 天体 + ASC） | **620 µs** |
-| 运动状态星盘（7 天体 + ASC） | **1.95 ms** |
+| 完整基础位置（7 天体 + ASC） | **175 µs** |
+| 运动状态星盘（7 天体 + ASC） | **485 µs** |
 
-> 默认基础位置吞吐量约 **1,600 张星盘/秒**。数据可通过 `swift test -c release --filter Benchmark` 复现。
+> 默认基础位置吞吐量约 **5,700 张星盘/秒**。数据可通过 `swift test -c release --filter Benchmark` 复现。
+
+### 对比 v2.0.0
+
+v3 用 Accelerate 向量化了 VSOP 星历计算，与 v2 共有的计算因此明显更快 —— 精度完全一致（所有回归基线仍全部通过）：
+
+| 计算项 | v2.0.0 | v3.0.0 | 提速 |
+|--------|--------|--------|------|
+| 太阳位置 | 9.4 µs | 4.6 µs | **2.0×** |
+| 水星位置 | 164 µs | 55 µs | **3.0×** |
+| 土星位置 | 139 µs | 49 µs | **2.8×** |
+| 完整基础位置（7 天体 + ASC） | 616 µs | 175 µs | **3.5×** |
+| 本命盘吞吐量 | ~1,620 张/秒 | ~5,700 张/秒 | **3.5×** |
 
 <div align="right">
 
@@ -516,4 +528,4 @@ Copyright &copy; 2026-present [Babywbx][profile-link].<br/>
 [github-release-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/releases
 [github-stars-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/stargazers
 [github-stars-shield]: https://img.shields.io/github/stars/wbx1-Ltd/AstroCore-Swift?color=ffcb47&labelColor=black&style=flat-square
-[profile-link]: https://github.com/babywbx
+[profile-link]: https://github.com/wbx1-Ltd

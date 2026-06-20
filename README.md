@@ -72,7 +72,7 @@ Tiered local-validation accuracy, zero runtime dependencies, thread-safe.
 | 📊 | **Batch Natal Chart** | Compute planets, ASC, houses, and angles in one call |
 | 🌐 | **City Database** | 33,000+ global cities with coordinates & timezones (optional module) |
 | 🧵 | **Thread-Safe** | Full `Sendable` conformance |
-| 🚫 | **Zero Dependencies** | Pure Swift, no external runtime dependencies |
+| 🚫 | **Zero Dependencies** | No third-party packages — pure Swift on Apple's Foundation + Accelerate |
 | ✅ | **Tiered Precision** | Primary real bodies are locally validated; definition points are documented separately |
 
 <div align="right">
@@ -360,22 +360,34 @@ checked into the repository.
 
 ## ⚡ Performance
 
-Release build, Apple Silicon (M-series):
+Release build, Apple Silicon (M-series). VSOP ephemeris evaluation is vectorized with Apple's Accelerate.
 
 | Computation | Time |
 |-------------|------|
 | Ascendant | **0.03 µs** |
-| House cusps (per system) | **0.3–5.8 µs** |
-| Sun position | **9.3 µs** |
-| Moon position | **1.5 µs** |
-| Single planet (Mercury–Pluto) | **34–166 µs** |
+| House cusps (per system) | **0.3–6 µs** |
+| Sun position | **4.6 µs** |
+| Moon position | **1.6 µs** |
+| Single planet (Mercury–Pluto) | **17–55 µs** |
 | Aspect grid (10 bodies, 45 pairs) | **15 µs** |
 | Cross-chart synastry (7×7) | **9 µs** |
 | Aspect pattern detection | **27 µs** |
-| Full natal positions (7 bodies + ASC) | **620 µs** |
-| Motion-rich natal states (7 bodies + ASC) | **1.95 ms** |
+| Full natal positions (7 bodies + ASC) | **175 µs** |
+| Motion-rich natal states (7 bodies + ASC) | **485 µs** |
 
-> Default chart throughput: ~**1,600 charts/sec**. Numbers reproduce via `swift test -c release --filter Benchmark`.
+> Default chart throughput: ~**5,700 charts/sec**. Numbers reproduce via `swift test -c release --filter Benchmark`.
+
+### vs. v2.0.0
+
+v3 vectorizes VSOP ephemeris evaluation with Accelerate, so computations shared with v2 are markedly faster — at identical accuracy (every regression baseline still passes):
+
+| Computation | v2.0.0 | v3.0.0 | Speedup |
+|-------------|--------|--------|---------|
+| Sun position | 9.4 µs | 4.6 µs | **2.0×** |
+| Mercury position | 164 µs | 55 µs | **3.0×** |
+| Saturn position | 139 µs | 49 µs | **2.8×** |
+| Full natal positions (7 bodies + ASC) | 616 µs | 175 µs | **3.5×** |
+| Natal throughput | ~1,620 charts/sec | ~5,700 charts/sec | **3.5×** |
 
 <div align="right">
 
@@ -519,4 +531,4 @@ packaged dataset, review the attribution requirements before release.
 [github-release-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/releases
 [github-stars-link]: https://github.com/wbx1-Ltd/AstroCore-Swift/stargazers
 [github-stars-shield]: https://img.shields.io/github/stars/wbx1-Ltd/AstroCore-Swift?color=ffcb47&labelColor=black&style=flat-square
-[profile-link]: https://github.com/babywbx
+[profile-link]: https://github.com/wbx1-Ltd

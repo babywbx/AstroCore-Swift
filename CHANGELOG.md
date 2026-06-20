@@ -13,6 +13,10 @@ astrology and events feature set on top of the core astronomy engine.
 - **`AstroAstrology` module** — astrology now ships as its own library product.
   The package exposes three products: `AstroCore` (astronomy), `AstroAstrology`
   (signs, houses, charts, aspects), and `AstroCoreLocations` (optional city data).
+- **Vectorized ephemeris** — VSOP planetary series are evaluated with Apple's
+  Accelerate (vDSP/vForce). A full natal chart drops from ~616 µs to ~175 µs
+  (~3.5× faster than 2.x) at identical accuracy — every regression baseline still
+  passes. Coefficient tables are now stored column-major.
 - **Aspects** — single-pair aspects, full aspect grids, applying/separating and
   exactness, exact-moment solving, cross-chart synastry, and chart-angle aspects
   (`AspectGrid`, `ChartAspectGrid`, `CrossAspectGrid`, `Aspect`, `OrbPolicy`,
