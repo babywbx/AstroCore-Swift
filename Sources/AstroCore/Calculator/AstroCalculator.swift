@@ -282,7 +282,7 @@ public enum AstroCalculator {
         let jdTT = jd + deltaTSeconds(julianDayUT: jd) / 86400.0
         let t = (jdTT - JulianDay.j2000) / 36525.0
         let tau = (jdTT - JulianDay.j2000) / 365250.0
-        // Sun's geometric mean longitude (Meeus 28.2), degrees.
+        // Sun's geometric mean longitude, degrees.
         let meanLongitude = AngleMath.normalized(degrees:
             280.4664567 + 360007.6982779 * tau + 0.03032028 * tau * tau
                 + tau * tau * tau / 49931.0

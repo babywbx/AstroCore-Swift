@@ -1,6 +1,6 @@
 import Foundation
 
-// Mean obliquity of the ecliptic — Laskar (1986)
+// Mean obliquity of the ecliptic
 // 10th-degree polynomial in U = T/100
 // Accuracy: 0.01″ over ±10,000 years from J2000.0
 enum Obliquity {
@@ -23,7 +23,7 @@ enum Obliquity {
     /// T: Julian centuries from J2000.0 in TT.
     static func meanObliquity(julianCenturiesTT t: Double) -> Double {
         let u = t / 100.0
-        // Laskar (1986) polynomial — coefficients in arcseconds
+        // Mean obliquity polynomial — coefficients in arcseconds
         // ε₀ = 23°26′21.448″ + Σ cᵢ × uⁱ
         let arcsec = horner(u, coeffs: coefficients)
         // Base value: 23°26′21.448″ = 23.4392911° = 84381.448″

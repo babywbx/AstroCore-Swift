@@ -9,7 +9,7 @@ Tiered local-validation accuracy, zero runtime dependencies, thread-safe.
 > `AstroCore` for low-level astronomy, `AstroAstrology` for astrology models,
 > and `AstroCoreLocations` for optional city lookup data.
 
-[简体中文](./README.zh-CN.md) · [Report Issue][github-issues-link] · [Releases][github-release-link]
+[简体中文](./README.zh-CN.md) · [Report Issue][github-issues-link] · [Changelog](./CHANGELOG.md) · [Releases][github-release-link]
 
 <!-- SHIELD GROUP -->
 
@@ -60,10 +60,15 @@ Tiered local-validation accuracy, zero runtime dependencies, thread-safe.
 | | Feature | Description |
 |-|---------|-------------|
 | ♈ | **Ascendant (ASC)** | Sidereal time + nutation + true obliquity, global coordinates |
-| 🏠 | **House Systems** | 16 twelve-house systems plus independent Gauquelin sectors, with angles and polar-latitude handling |
+| 🏠 | **House Systems** | 16 twelve-house systems plus an independent 36-sector Gauquelin model, with angles and polar-latitude handling |
 | ☀️ | **Sun Sign** | VSOP87D + FK5 correction + aberration + nutation |
 | 🌙 | **Moon Sign** | ELP-2000/82 (120 terms) + residual correction + nutation |
 | 🪐 | **Planet Signs** | Mercury through Saturn — light-time + FK5 + gravitational deflection + residual correction |
+| 🔭 | **Outer Bodies** | Uranus, Neptune, Pluto, lunar nodes, and Black Moon Lilith (tiered precision) |
+| 🔗 | **Aspects & Patterns** | Single-pair, full grids, applying/separating, exact moments, cross-chart synastry, and pattern detection |
+| 🌅 | **Rise · Set · Transit** | Civil-day rise/set events, twilight overlays, and meridian transits |
+| ↩️ | **Stations & Retrograde** | Direct/retrograde stations and retrograde intervals |
+| 🏃 | **Motion States** | Per-body longitude speed and retrograde flags |
 | 📊 | **Batch Natal Chart** | Compute planets, ASC, houses, and angles in one call |
 | 🌐 | **City Database** | 33,000+ global cities with coordinates & timezones (optional module) |
 | 🧵 | **Thread-Safe** | Full `Sendable` conformance |
@@ -145,10 +150,11 @@ let moment = try CivilMoment(
     timeZoneIdentifier: "UTC"
 )
 let sun = AstroCalculator.sunPosition(for: moment)
-print(sun.sign.name)        // "Cancer"
-print(sun.sign.emoji)       // "♋"
-print(sun.longitude)        // 90.406° (summer solstice)
-print(sun.degreeInSign)     // 0.406°
+let sign = ZodiacSign(longitude: sun.longitude)
+print(sign.name)                            // "Cancer"
+print(sign.emoji)                           // "♋"
+print(sun.longitude)                        // 90.406° (summer solstice)
+print(sun.longitude - sign.startLongitude)  // 0.406° into the sign
 ```
 
 ### 🌙 Moon Sign
@@ -159,8 +165,9 @@ let moment = try CivilMoment(
     timeZoneIdentifier: "UTC"
 )
 let moon = AstroCalculator.moonPosition(for: moment)
-print(moon.sign.name)       // "Scorpio"
-print(moon.sign.emoji)      // "♏"
+let sign = ZodiacSign(longitude: moon.longitude)
+print(sign.name)            // "Scorpio"
+print(sign.emoji)           // "♏"
 print(moon.latitude)        // 5.17° (ecliptic latitude)
 ```
 
@@ -174,9 +181,11 @@ let moment = try CivilMoment(
 
 // Single planet
 let venus = AstroCalculator.planetPosition(.venus, for: moment)
-print("\(venus.sign.emoji) Venus in \(venus.sign.name)")  // "♐ Venus in Sagittarius"
+let venusSign = ZodiacSign(longitude: venus.longitude)
+print("\(venusSign.emoji) Venus in \(venusSign.name)")  // "♐ Venus in Sagittarius"
 
-// Supported bodies: .sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn
+// Bodies: .sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn,
+//         .uranus, .neptune, .pluto, lunar nodes, and Lilith variants
 ```
 
 ### ♈ Ascendant (Rising Sign)
@@ -187,7 +196,7 @@ let moment = try CivilMoment(
     timeZoneIdentifier: "America/New_York"
 )
 let coord = try GeoCoordinate(latitude: 40.7128, longitude: -74.0060)
-let asc = try AstroCalculator.ascendant(for: moment, coordinate: coord)
+let asc = try AstrologyCalculator.ascendant(for: moment, coordinate: coord)
 print(asc.sign.name)             // "Sagittarius"
 print(asc.eclipticLongitude)     // 240.93°
 print(asc.degreeInSign)          // 0.93°
@@ -221,7 +230,7 @@ Zariel houses.
 Polar fallback strategies:
 `.porphyry` (default), `.equalASC`, `.wholeSign`, `.error`
 
-Independent Gauquelin sectors:
+Independent Gauquelin sectors (36-sector model):
 
 ```swift
 let sectors = try AstrologyCalculator.gauquelinSectors(
@@ -261,7 +270,8 @@ print("ASC: \(natal.ascendant!.sign.emoji) \(natal.ascendant!.sign.name)")
 
 // All body positions
 for (body, pos) in natal.bodies {
-    print("\(pos.sign.emoji) \(body) in \(pos.sign.name) \(pos.degreeInSign)°")
+    let sign = ZodiacSign(longitude: pos.longitude)
+    print("\(sign.emoji) \(body) in \(sign.name) \(pos.longitude - sign.startLongitude)°")
 }
 ```
 
@@ -295,7 +305,7 @@ for city in results {
 
 // Use GeoCoordinate directly for calculations
 let tokyo = results.first!
-let asc = try AstroCalculator.ascendant(for: moment, coordinate: tokyo.coordinate)
+let asc = try AstrologyCalculator.ascendant(for: moment, coordinate: tokyo.coordinate)
 ```
 
 ### 🔧 Low-Level API
@@ -354,14 +364,18 @@ Release build, Apple Silicon (M-series):
 
 | Computation | Time |
 |-------------|------|
-| Ascendant | **0.035 µs** |
-| Moon position | **1.1 µs** |
-| Sun position | **9.5 µs** |
-| Single planet | **37.5–171.5 µs** |
-| Full natal positions (7 bodies + ASC) | **648.7 µs** |
-| Motion-rich natal states (7 bodies + ASC) | **1.98 ms** |
+| Ascendant | **0.03 µs** |
+| House cusps (per system) | **0.3–5.8 µs** |
+| Sun position | **9.3 µs** |
+| Moon position | **1.5 µs** |
+| Single planet (Mercury–Pluto) | **34–166 µs** |
+| Aspect grid (10 bodies, 45 pairs) | **15 µs** |
+| Cross-chart synastry (7×7) | **9 µs** |
+| Aspect pattern detection | **27 µs** |
+| Full natal positions (7 bodies + ASC) | **620 µs** |
+| Motion-rich natal states (7 bodies + ASC) | **1.95 ms** |
 
-> Default chart throughput: ~**1,542 charts/sec**.
+> Default chart throughput: ~**1,600 charts/sec**. Numbers reproduce via `swift test -c release --filter Benchmark`.
 
 <div align="right">
 
@@ -373,14 +387,14 @@ Release build, Apple Silicon (M-series):
 
 | Metric | Value |
 |--------|-------|
-| Test cases | **82** |
-| Test suites | **14** |
+| Test cases | **253** |
+| Test suites | **39** |
 
-Validation:
+Validation (`swift test -c release`):
 
-- ✅ **Local validation baselines** — multi-epoch verification with tiered accuracy claims, 1850–2100
-- ✅ **Solstice cross-validation** — 2000 summer & 2024 winter solstice error < 1.5″
-- ✅ **8 global cities** — NYC, London, Tokyo, Berlin, Sydney, Mumbai, LA, Helsinki
+- ✅ **Local validation baselines** — multi-epoch verification with tiered accuracy claims, 1800–2100
+- ✅ **Solstice & equinox references** — 2000 summer solstice, 1990 spring equinox, and 2024 winter solstice Sun longitudes checked against fixtures
+- ✅ **Global cities** — ascendant & natal regression across New York, London, Tokyo, Berlin, and Sydney
 - ✅ **House systems** — 16 systems checked for cusp validity, angle alignment, and polar fallback behavior
 - ✅ **Gauquelin sectors** — independent 36-sector model with clockwise numbering and baseline coverage
 - ✅ **Edge cases** — year boundaries (1800/2100), polar latitudes, sign boundaries
@@ -398,21 +412,23 @@ Validation:
 
 | Type | Description |
 |------|-------------|
-| `AstroCalculator` | Main entry — Julian day, Sun/Moon/planet positions, motion states, and low-level angles |
+| `AstroCalculator` | Main entry — Julian day, Sun/Moon/planet positions, motion states, derived coordinates, illumination, equation of time, rise/set/transit, stations, and aspect primitives |
 | `CivilMoment` | Civil time (year/month/day/hour/minute/second + IANA timezone, with explicit repeated-time resolution when needed) |
 | `RepeatedTimeResolution` | DST fall-back ambiguity policy: reject, first occurrence, or last occurrence |
 | `GeoCoordinate` | Geographic coordinate with range-checked latitude and longitude |
-| `CelestialPosition` | Lightweight body position (ecliptic longitude/latitude) |
+| `CelestialPosition` | Lightweight body position (ecliptic longitude/latitude + optional distance) |
 | `CelestialState` | Motion-rich body state (position + longitude speed/retrograde) |
 | `CelestialBody` | Body enum — Sun through Pluto plus lunar nodes and Lilith variants |
+| `EquatorialCoordinate` / `HorizontalCoordinate` | Derived equatorial and topocentric horizontal frames |
+| `StationKind` | Direct / retrograde / stationary classification |
 | `AstroError` | Typed core errors (invalid coordinate, unsupported year, missing ephemeris data) |
 
 ### AstroAstrology (Astrology Layer)
 
 | Type | Description |
 |------|-------------|
-| `AstrologyCalculator` | Main astrology entry — zodiac mapping, ascendant, houses, Gauquelin sectors, natal charts, and aspects |
-| `ZodiacSign` | 12 zodiac signs with name, emoji, start longitude, `contains()` |
+| `AstrologyCalculator` | Main astrology entry — zodiac mapping, ascendant, houses, Gauquelin sectors, natal charts/states, rise/set events & twilight, stations & retrograde, and aspects (grids, patterns, synastry) |
+| `ZodiacSign` | 12 zodiac signs with name, emoji, start longitude, `contains()`, and `init(longitude:)` |
 | `AscendantResult` | Ascendant (ecliptic longitude, sign, degree in sign, boundary flag) |
 | `NatalPositions` | Batch result (optional ascendant + body dictionary) |
 | `NatalStates` | Motion-rich batch result (optional ascendant + body state dictionary) |
@@ -425,6 +441,12 @@ Validation:
 | `Angles` | ASC / MC / DSC / IC and optional vertex |
 | `PolarFallback` | Fallback strategy when a house system is undefined at polar latitudes |
 | `AspectKind` / `AspectGrid` | Aspect definitions and matched body-body aspect grids |
+| `Aspect` / `ChartAspect` / `CrossAspect` | One matched aspect: orb, applying/separating, exactness |
+| `AspectPattern` / `AspectPatternKind` | Detected multi-body aspect patterns |
+| `ChartAngle` / `AspectParticipant` | Chart angles and aspect participants (body or angle) |
+| `OrbPolicy` | Configurable per-aspect / per-body orb allowances |
+| `RiseSetEvents` / `EventInstant` | Rise/set/transit instants with circumpolar and twilight state |
+| `Station` | A direct/retrograde station instant for a body |
 | `AstrologyError` | Typed astrology-layer errors (missing coordinate, polar fallback error, wrapped core errors) |
 
 ### AstroCoreLocations (Optional)
@@ -463,10 +485,10 @@ Validation:
 |--------|-------|
 | **Standard astronomical algorithms** | Julian Day, ΔT, sidereal time, nutation, ascendant formulas |
 | **VSOP87D** | Heliocentric ecliptic coordinates (full series) |
-| **ELP-2000/82** (Chapront-Touzé & Chapront, 1983) | Lunar longitude/latitude (120-term truncated series) |
+| **ELP-2000/82** | Lunar longitude/latitude (120-term truncated series) |
 | **Classical house-system geometry** | Equal, Whole Sign, Porphyry, Sripati, semi-arc, and great-circle house constructions |
 | **IAU 1980 Nutation Model** | 63-term nutation in longitude/obliquity |
-| **Laskar (1986)** | Mean obliquity 10th-degree polynomial |
+| **Mean obliquity polynomial** | 10th-degree obliquity series |
 | **Standard ΔT model (2006)** | ΔT piecewise polynomials (1800–2100) |
 
 <div align="right">

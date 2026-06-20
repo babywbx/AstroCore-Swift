@@ -60,7 +60,7 @@ enum Topocentric {
         let (sinHT, cosHT) = TrigDeg.sincos(topoHourAngle)
         let sinAlt = min(1.0, max(-1.0, sinLat * sinDecT + cosLat * cosDecT * cosHT))
         let altitude = TrigDeg.asin(sinAlt)
-        // Azimuth from South, westward (Meeus 13.5), then shift to North, clockwise.
+        // Azimuth from South, westward, then shift to North, clockwise.
         let azSouth = Foundation.atan2(
             sinHT * cosDecT,
             cosHT * sinLat * cosDecT - sinDecT * cosLat

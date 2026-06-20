@@ -9,7 +9,7 @@
 > `AstroCore` 提供底层天文计算，`AstroAstrology` 提供占星模型，
 > `AstroCoreLocations` 提供可选城市检索数据。
 
-[English](./README.md) · [报告问题][github-issues-link] · [更新日志][github-release-link]
+[English](./README.md) · [报告问题][github-issues-link] · [更新日志](./CHANGELOG.md) · [Releases][github-release-link]
 
 <!-- SHIELD GROUP -->
 
@@ -64,6 +64,11 @@
 | ☀️ | **太阳星座** | VSOP87D + FK5 修正 + 光行差 + 章动 |
 | 🌙 | **月亮星座** | ELP-2000/82（120 项）+ 残差修正 + 章动 |
 | 🪐 | **行星星座** | 水金火木土五大行星 — 光行时 + FK5 + 引力偏折 + 残差修正 |
+| 🔭 | **外行星与虚点** | 天王星、海王星、冥王星、月交点与黑月莉莉丝（分级精度） |
+| 🔗 | **相位与格局** | 单相位、完整相位网格、入/出相位、精确时刻、跨盘合盘与格局识别 |
+| 🌅 | **升 · 落 · 中天** | 民用日升落事件、晨昏蒙影与子午中天 |
+| ↩️ | **留与逆行** | 顺行/逆行留点与逆行区间 |
+| 🏃 | **运动状态** | 每个天体的黄经速度与逆行标记 |
 | 📊 | **批量本命盘** | 一次计算天体、ASC、宫位与四轴 |
 | 🌐 | **城市数据库** | 33,000+ 全球城市坐标与时区（可选模块） |
 | 🧵 | **线程安全** | 全面遵循 `Sendable` |
@@ -144,10 +149,11 @@ let moment = try CivilMoment(
     timeZoneIdentifier: "UTC"
 )
 let sun = AstroCalculator.sunPosition(for: moment)
-print(sun.sign.name)        // "Cancer"
-print(sun.sign.emoji)       // "♋"
-print(sun.longitude)        // 90.406°（夏至）
-print(sun.degreeInSign)     // 0.406°
+let sign = ZodiacSign(longitude: sun.longitude)
+print(sign.name)                            // "Cancer"
+print(sign.emoji)                           // "♋"
+print(sun.longitude)                        // 90.406°（夏至）
+print(sun.longitude - sign.startLongitude)  // 星座内 0.406°
 ```
 
 ### 🌙 月亮星座
@@ -158,8 +164,9 @@ let moment = try CivilMoment(
     timeZoneIdentifier: "UTC"
 )
 let moon = AstroCalculator.moonPosition(for: moment)
-print(moon.sign.name)       // "Scorpio"
-print(moon.sign.emoji)      // "♏"
+let sign = ZodiacSign(longitude: moon.longitude)
+print(sign.name)            // "Scorpio"
+print(sign.emoji)           // "♏"
 print(moon.latitude)        // 5.17°（黄纬）
 ```
 
@@ -173,9 +180,11 @@ let moment = try CivilMoment(
 
 // 单颗行星
 let venus = AstroCalculator.planetPosition(.venus, for: moment)
-print("\(venus.sign.emoji) Venus in \(venus.sign.name)")  // "♐ Venus in Sagittarius"
+let venusSign = ZodiacSign(longitude: venus.longitude)
+print("\(venusSign.emoji) Venus in \(venusSign.name)")  // "♐ Venus in Sagittarius"
 
-// 支持的天体：.sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn
+// 支持的天体：.sun, .moon, .mercury, .venus, .mars, .jupiter, .saturn,
+//            .uranus, .neptune, .pluto、月交点与 Lilith 变体
 ```
 
 ### ♈ 上升星座 (ASC)
@@ -186,7 +195,7 @@ let moment = try CivilMoment(
     timeZoneIdentifier: "America/New_York"
 )
 let coord = try GeoCoordinate(latitude: 40.7128, longitude: -74.0060)
-let asc = try AstroCalculator.ascendant(for: moment, coordinate: coord)
+let asc = try AstrologyCalculator.ascendant(for: moment, coordinate: coord)
 print(asc.sign.name)             // "Sagittarius"
 print(asc.eclipticLongitude)     // 240.93°
 print(asc.degreeInSign)          // 0.93°
@@ -219,7 +228,7 @@ print(houses.angles.midheaven)             // MC 黄经
 高纬度 fallback 策略：
 `.porphyry`（默认）、`.equalASC`、`.wholeSign`、`.error`
 
-独立的 Gauquelin 36 扇区 API：
+独立的 Gauquelin 36 扇区模型：
 
 ```swift
 let sectors = try AstrologyCalculator.gauquelinSectors(
@@ -259,7 +268,8 @@ print("ASC: \(natal.ascendant!.sign.emoji) \(natal.ascendant!.sign.name)")
 
 // 遍历所有天体
 for (body, pos) in natal.bodies {
-    print("\(pos.sign.emoji) \(body) in \(pos.sign.name) \(pos.degreeInSign)°")
+    let sign = ZodiacSign(longitude: pos.longitude)
+    print("\(sign.emoji) \(body) in \(sign.name) \(pos.longitude - sign.startLongitude)°")
 }
 ```
 
@@ -293,7 +303,7 @@ for city in results {
 
 // 直接获取 GeoCoordinate 用于计算
 let tokyo = results.first!
-let asc = try AstroCalculator.ascendant(for: moment, coordinate: tokyo.coordinate)
+let asc = try AstrologyCalculator.ascendant(for: moment, coordinate: tokyo.coordinate)
 ```
 
 ### 🔧 底层 API
@@ -351,14 +361,18 @@ Release 模式，Apple Silicon（M-series）：
 
 | 计算项 | 耗时 |
 |--------|------|
-| 上升星座 | **0.035 µs** |
-| 月亮位置 | **1.1 µs** |
-| 太阳位置 | **9.5 µs** |
-| 单颗行星 | **37.5–171.5 µs** |
-| 完整基础位置（7 天体 + ASC） | **648.7 µs** |
-| 运动状态星盘（7 天体 + ASC） | **1.98 ms** |
+| 上升星座 | **0.03 µs** |
+| 宫位宫头（单系统） | **0.3–5.8 µs** |
+| 太阳位置 | **9.3 µs** |
+| 月亮位置 | **1.5 µs** |
+| 单颗行星（水星–冥王星） | **34–166 µs** |
+| 相位网格（10 天体，45 组） | **15 µs** |
+| 跨盘合盘（7×7） | **9 µs** |
+| 相位格局识别 | **27 µs** |
+| 完整基础位置（7 天体 + ASC） | **620 µs** |
+| 运动状态星盘（7 天体 + ASC） | **1.95 ms** |
 
-> 默认基础位置吞吐量约 **1,542 张星盘/秒**。
+> 默认基础位置吞吐量约 **1,600 张星盘/秒**。数据可通过 `swift test -c release --filter Benchmark` 复现。
 
 <div align="right">
 
@@ -370,14 +384,14 @@ Release 模式，Apple Silicon（M-series）：
 
 | 指标 | 数值 |
 |------|------|
-| 测试用例 | **82** |
-| 测试套件 | **14** |
+| 测试用例 | **253** |
+| 测试套件 | **39** |
 
-验证方式：
+验证方式（`swift test -c release`）：
 
-- ✅ **本地验证基线** — 1850–2100 多历元验证，并按对象分级声明精度
-- ✅ **至日交叉验证** — 2000 夏至、2024 冬至误差 < 1.5″
-- ✅ **全球 8 城市** — 纽约、伦敦、东京、柏林、悉尼、孟买、洛杉矶、赫尔辛基
+- ✅ **本地验证基线** — 1800–2100 多历元验证，并按对象分级声明精度
+- ✅ **至点与分点参考** — 2000 夏至、1990 春分、2024 冬至太阳黄经对照 fixture 校验
+- ✅ **全球城市** — 纽约、伦敦、东京、柏林、悉尼的上升与本命回归
 - ✅ **宫位系统** — 16 种系统覆盖宫头有效性、四轴对齐与高纬 fallback
 - ✅ **Gauquelin 扇区** — 独立 36 扇区模型，覆盖顺时针编号与 baseline
 - ✅ **极端边界** — 年份边界(1800/2100)、极地纬度、星座交界
@@ -395,21 +409,23 @@ Release 模式，Apple Silicon（M-series）：
 
 | 类型 | 说明 |
 |------|------|
-| `AstroCalculator` | 主入口 — 儒略日、太阳/月亮/行星位置、运动状态与底层角度计算 |
+| `AstroCalculator` | 主入口 — 儒略日、太阳/月亮/行星位置、运动状态、导出坐标、光照度、时差、升落中天、留点与相位原语 |
 | `CivilMoment` | 民用时间（年月日时分秒 + IANA 时区，必要时可显式指定重复小时的解析策略） |
 | `RepeatedTimeResolution` | 夏令时回拨重复小时的解析策略：拒绝、第一次出现或最后一次出现 |
 | `GeoCoordinate` | 地理坐标（纬度/经度范围校验） |
-| `CelestialPosition` | 轻量天体位置（黄经、黄纬） |
+| `CelestialPosition` | 轻量天体位置（黄经、黄纬、可选距离） |
 | `CelestialState` | 运动状态天体（位置 + 黄经速度/逆行） |
 | `CelestialBody` | 天体枚举 — 太阳至冥王星、月交点与 Lilith 变体 |
+| `EquatorialCoordinate` / `HorizontalCoordinate` | 导出的赤道坐标与地平（地心修正）坐标 |
+| `StationKind` | 顺行 / 逆行 / 留 的分类 |
 | `AstroError` | 类型化核心错误（坐标无效、年份越界、星历数据缺失等） |
 
 ### AstroAstrology（占星层）
 
 | 类型 | 说明 |
 |------|------|
-| `AstrologyCalculator` | 占星主入口 — 黄道映射、上升、宫位、Gauquelin 扇区、本命盘与相位 |
-| `ZodiacSign` | 黄道十二宫（名称、emoji、起始经度、`contains()`） |
+| `AstrologyCalculator` | 占星主入口 — 黄道映射、上升、宫位、Gauquelin 扇区、本命盘/运动态、升落事件与晨昏蒙影、留与逆行、以及相位（网格、格局、合盘） |
+| `ZodiacSign` | 黄道十二宫（名称、emoji、起始经度、`contains()`、`init(longitude:)`） |
 | `AscendantResult` | 上升星座结果（黄经、星座、星座内度数、边界标记） |
 | `NatalPositions` | 批量结果（可选 ASC + 天体字典） |
 | `NatalStates` | 运动状态批量结果（可选 ASC + 天体状态字典） |
@@ -422,6 +438,12 @@ Release 模式，Apple Silicon（M-series）：
 | `Angles` | ASC / MC / DSC / IC 与可选 Vertex |
 | `PolarFallback` | 极地纬度下宫位系统不可用时的 fallback 策略 |
 | `AspectKind` / `AspectGrid` | 相位定义与匹配到的天体相位网格 |
+| `Aspect` / `ChartAspect` / `CrossAspect` | 单条相位：容许度、入/出相位、是否精确 |
+| `AspectPattern` / `AspectPatternKind` | 识别出的多体相位格局 |
+| `ChartAngle` / `AspectParticipant` | 星盘四轴与相位参与者（天体或四轴） |
+| `OrbPolicy` | 可配置的按相位/按天体容许度 |
+| `RiseSetEvents` / `EventInstant` | 升落中天时刻，含极昼夜与晨昏状态 |
+| `Station` | 单个天体的顺/逆行留点时刻 |
 | `AstrologyError` | 类型化占星层错误（缺少坐标、高纬宫位错误、包装的核心错误等） |
 
 ### AstroCoreLocations（可选）
@@ -460,10 +482,10 @@ Release 模式，Apple Silicon（M-series）：
 |------|------|
 | **Standard astronomical algorithms** | 儒略日、ΔT、恒星时、章动、上升星座公式 |
 | **VSOP87D** | 行星日心黄道球坐标（完整级数） |
-| **ELP-2000/82** (Chapront-Touzé & Chapront, 1983) | 月球黄经/黄纬（120 项截断级数） |
+| **ELP-2000/82** | 月球黄经/黄纬（120 项截断级数） |
 | **传统宫位几何方法** | Equal、Whole Sign、Porphyry、Sripati、semi-arc、great-circle 等宫位构造 |
 | **IAU 1980 章动模型** | 63 项章动黄经/黄赤交角修正 |
-| **Laskar (1986)** | 平黄赤交角 10 阶多项式 |
+| **平黄赤交角多项式** | 10 阶黄赤交角级数 |
 | **Standard ΔT model (2006)** | ΔT 分段多项式（1800–2100） |
 
 <div align="right">
